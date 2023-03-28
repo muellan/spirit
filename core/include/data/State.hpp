@@ -2,9 +2,6 @@
 #ifndef SPIRIT_CORE_DATA_STATE_HPP
 #define SPIRIT_CORE_DATA_STATE_HPP
 
-#include <engine/Method.hpp>
-#include <utility/Exception.hpp>
-
 #include <fmt/chrono.h>
 #include <fmt/format.h>
 
@@ -12,6 +9,12 @@
 #include <memory>
 #include <string>
 #include <vector>
+
+#include <engine/Method.hpp>
+#include <utility/Exception.hpp>
+
+#include <utility/Execution.hpp>
+#include <utility/Timing.hpp>
 
 /*
  * The State struct is passed around in an application to make the
@@ -21,6 +24,8 @@
  */
 struct State
 {
+    Execution::Compute_Resource compute_resource;
+
     // Currently "active" chain
     std::shared_ptr<Data::Spin_System_Chain> chain;
     // Currently "active" image

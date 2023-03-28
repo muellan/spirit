@@ -1,5 +1,7 @@
 ### Directories ###
 build/*
+build_*
+build_*/*
 _build/*
 output/*
 output_llg/*
@@ -44,6 +46,7 @@ VERSION.txt
 scalar.py
 version.py
 windows_metafile.rc
+compile_commands.json
 
 
 # Created by https://www.gitignore.io/api/windows,osx,linux,visualstudio,visualstudiocode,cmake,python,c++,qt
@@ -370,6 +373,9 @@ paket-files/
 ### VisualStudioCode ###
 .vscode
 
+
+### VIM ###
+.tasks
 
 
 ### CMake ###
