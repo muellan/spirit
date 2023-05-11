@@ -8,6 +8,7 @@
 #include <Eigen/Core>
 
 #include <engine/Vectormath_Defines.hpp>
+#include <utility/Execution.hpp>
 
 namespace Engine
 {
@@ -29,18 +30,23 @@ void normalize( vectorfield & vf );
 // Project v1 to be parallel to v2
 //      Note: this assumes normalized vectorfields
 void project_parallel( vectorfield & vf1, const vectorfield & vf2 );
+void project_parallel( Execution::Context, vectorfield & vf1, const vectorfield & vf2 );
 // Project v1 to be orthogonal to v2
 //      Note: this assumes normalized vectorfields
 void project_orthogonal( vectorfield & vf1, const vectorfield & vf2 );
+void project_orthogonal( Execution::Context, vectorfield & vf1, const vectorfield & vf2 );
 // Invert v1's component parallel to v2
 //      Note: this assumes normalized vectorfields
 void invert_parallel( vectorfield & vf1, const vectorfield & vf2 );
+void invert_parallel( Execution::Context, vectorfield & vf1, const vectorfield & vf2 );
 // Invert v1's component orthogonal to v2
 //      Note: this assumes normalized vectorfields
 void invert_orthogonal( vectorfield & vf1, const vectorfield & vf2 );
+void invert_orthogonal( Execution::Context, vectorfield & vf1, const vectorfield & vf2 );
 // Project vf1's vectors into the tangent plane of vf2
 //      Note: vf2 must have normalized vectors
 void project_tangential( vectorfield & vf1, const vectorfield & vf2 );
+void project_tangential( Execution::Context, vectorfield & vf1, const vectorfield & vf2 );
 
 // The tangential projector is a matrix which projects any vector into the tangent
 //      space of a vectorfield, considered to live on the direct product of N unit
