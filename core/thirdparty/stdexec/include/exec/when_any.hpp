@@ -75,7 +75,7 @@ namespace exec {
     // transform Tag(Args...) to a tuple __decayed_tuple<Tag, Args...>
     template <class _Env, class... _SenderIds>
     using __result_type_t = __mapply<
-      __transform<__q<__signature_to_tuple_t>, __q<std::variant>>,
+      __transform<__q<__signature_to_tuple_t>, __munique<__q<std::variant>>>,
       __completion_signatures_t<_Env, _SenderIds...>>;
 
     template <class _Variant, class... _Ts>
@@ -155,6 +155,7 @@ namespace exec {
     struct __receiver {
       class __t {
        public:
+        using is_receiver = void;
         using __id = __receiver;
 
         explicit __t(__op_base<_Receiver, _ResultVariant>* __op) noexcept
@@ -172,7 +173,7 @@ namespace exec {
 
         friend __env_t<env_of_t<_Receiver>> tag_invoke(get_env_t, const __t& __self) noexcept {
           using __with_token = __with<get_stop_token_t, in_place_stop_token>;
-          auto __token = __with_token{__self.__op_->__stop_source_.get_token()};
+          auto __token = __with_(get_stop_token, __self.__op_->__stop_source_.get_token());
           return __make_env(get_env(__self.__op_->__receiver_), (__with_token&&) __token);
         }
       };
@@ -207,7 +208,7 @@ namespace exec {
             && (__nothrow_connectable<stdexec::__t<_SenderIds>, __receiver_t> && ...))
           : __op_base_t{(_Receiver&&) __rcvr, static_cast<int>(sizeof...(_SenderIds))}
           , __ops_{__conv{[&__senders, this] {
-            return connect(
+            return stdexec::connect(
               std::get<_Is>((_SenderTuple&&) __senders),
               __receiver_t{static_cast<__op_base_t*>(this)});
           }}...} {

@@ -34,10 +34,6 @@ struct Void_Context {
 struct Resource_Shape
 {
     inline static constexpr int devices = 1;
-    inline static constexpr int grid_dims[3]  {1,1,1};
-    inline static constexpr int block_dims[3] {1,1,1};
-    inline static constexpr int block_threads = 1;
-    inline static constexpr int warp_threads  = 1;
     inline static constexpr int threads = 1;
 };
 
@@ -61,10 +57,6 @@ private:
 struct Resource_Shape
 {
     int devices = 1;
-    inline static constexpr int grid_dims[3]  {2147483647,65536,65536};
-    inline static constexpr int block_dims[3] {1024,1024,64};
-    inline static constexpr int block_threads = 1024;
-    inline static constexpr int warp_threads  = 32;
     inline static constexpr std::int64_t threads = 2147483647L*65536L*65536L;
 };  
 
@@ -94,11 +86,7 @@ private:
 
 struct Resource_Shape
 {
-    inline static constexpr int devices       = 1;
-    inline static constexpr int grid_dims[3]  {1,1,1};
-    inline static constexpr int block_dims[3] {1,1,1};
-    inline static constexpr int block_threads = 1;
-    inline static constexpr int warp_threads  = 1;
+    inline static constexpr int devices = 1;
     int threads = 1;
 };
 

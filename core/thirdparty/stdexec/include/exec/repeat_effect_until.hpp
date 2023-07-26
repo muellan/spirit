@@ -47,8 +47,8 @@ namespace exec {
           __call_result_t<stdexec::on_t, trampoline_scheduler, _Source &>;
         using __source_op_t = stdexec::connect_result_t<__source_on_scheduler_sender, __receiver_t>;
 
-        [[no_unique_address]] _Source __source_;
-        [[no_unique_address]] _Receiver __rcvr_;
+        STDEXEC_NO_UNIQUE_ADDRESS _Source __source_;
+        STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
         __manual_lifetime<__source_op_t> __source_op_;
         trampoline_scheduler __sched_;
 
@@ -150,7 +150,7 @@ namespace exec {
       struct __t {
         using is_sender = void;
         using __id = __sender;
-        [[no_unique_address]] _Source __source_;
+        STDEXEC_NO_UNIQUE_ADDRESS _Source __source_;
 
         template <class... Ts>
         using __value_t = stdexec::completion_signatures<>;
@@ -168,7 +168,7 @@ namespace exec {
             __value_t>;
 
         template <__decays_to<__t> _Self, class _Env>
-        friend auto tag_invoke(get_completion_signatures_t, _Self &&, _Env)
+        friend auto tag_invoke(get_completion_signatures_t, _Self &&, _Env &&)
           -> __completion_signatures<_Env> {
           return {};
         }
@@ -189,8 +189,7 @@ namespace exec {
         }
 
         friend auto tag_invoke(get_env_t, const __t &__self) //
-          noexcept(__nothrow_callable<get_env_t, const _Source &>)
-            -> __call_result_t<get_env_t, const _Source &> {
+          noexcept(__nothrow_callable<get_env_t, const _Source &>) -> env_of_t<const _Source &> {
           return get_env(__self.__source_);
         }
       };

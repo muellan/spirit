@@ -21,9 +21,6 @@
 
 #include <functional>
 
-// A std::declval that doesn't instantiate templates:
-#define _DECLVAL(...) ((static_cast<__VA_ARGS__ (*)() noexcept>(0))())
-
 namespace stdexec::__std_concepts {
 #if STDEXEC_HAS_STD_CONCEPTS_HEADER()
   using std::invocable;
@@ -45,6 +42,13 @@ namespace stdexec {
     requires(_Fun&& __f, _As&&... __as) {
       { std::invoke((_Fun&&) __f, (_As&&) __as...) } noexcept;
     };
+
+  struct __first {
+    template <class _First, class _Second>
+    constexpr _First&& operator()(_First&& __first, _Second&&) const noexcept {
+      return (_First&&) __first;
+    }
+  };
 
   template <auto _Fun>
   struct __fun_c_t {

@@ -28,6 +28,8 @@ namespace exec {
 
       class __t {
        public:
+        using is_receiver = void;
+
         __t(_Receiver&& __upstream)
           : __upstream_{(_Receiver&&) __upstream} {
         }
@@ -72,7 +74,7 @@ namespace exec {
         friend connect_result_t<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>
           tag_invoke(connect_t, _Self&& __self, _Receiver&& __receiver) noexcept(
             __nothrow_connectable<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>) {
-          return connect(
+          return stdexec::connect(
             ((_Self&&) __self).__sender_, __receiver_t<_Receiver>{(_Receiver&&) __receiver});
         }
 
@@ -121,6 +123,8 @@ namespace exec {
 
       class __t {
        public:
+        using is_receiver = void;
+
         __t(_Receiver&& __upstream)
           : __upstream_{(_Receiver&&) __upstream} {
         }
@@ -175,7 +179,7 @@ namespace exec {
         friend connect_result_t<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>
           tag_invoke(connect_t, _Self&& __self, _Receiver&& __receiver) noexcept(
             __nothrow_connectable<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>) {
-          return connect(
+          return stdexec::connect(
             ((_Self&&) __self).__sender_, __receiver_t<_Receiver>{(_Receiver&&) __receiver});
         }
 

@@ -25,38 +25,13 @@ namespace stdexec {
   _Tp&& __declval() noexcept;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  // concept __same_as
-#if STDEXEC_CLANG()
-
-  template <class _Ap, class _Bp>
-  concept __same_as = __is_same(_Ap, _Bp);
-
-#elif STDEXEC_GCC()
-
-  template <class _Ap, class _Bp>
-  concept __same_as = __is_same_as(_Ap, _Bp);
-
-#else
-
-  template <class _Ap, class _Bp>
-  inline constexpr bool __same_as_v = false;
-
-  template <class _Ap>
-  inline constexpr bool __same_as_v<_Ap, _Ap> = true;
-
-  template <class _Ap, class _Bp>
-  concept __same_as = __same_as_v<_Ap, _Bp>;
-
-#endif
-
-  //////////////////////////////////////////////////////////////////////////////////////////////////
   // __decay_t: An efficient implementation for std::decay
-#if __has_builtin(__decay)
+// #if STDEXEC_HAS_BUILTIN(__decay)
+//
+//   template <class _Ty>
+//   using __decay_t = __decay(_Ty);
 
-  template <class _Ty>
-  using __decay_t = __decay(_Ty);
-
-#elif STDEXEC_NVHPC()
+#if STDEXEC_NVHPC()
 
   template <class _Ty>
   using __decay_t = std::decay_t<_Ty>;

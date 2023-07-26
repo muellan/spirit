@@ -100,6 +100,8 @@ namespace exec {
 
       class __t {
        public:
+        using is_receiver = void;
+
         explicit __t(__final_operation_base<_ResultType, _ReceiverId>* __op) noexcept
           : __op_{__op} {
         }
@@ -165,6 +167,8 @@ namespace exec {
 
       class __t {
        public:
+        using is_receiver = void;
+
         explicit __t(__base_op_t* __op) noexcept
           : __op_(__op) {
         }
@@ -216,7 +220,7 @@ namespace exec {
         STDEXEC_ASSERT(__op_.index() == 0);
         _FinalSender __final_sender = (_FinalSender&&) std::get_if<0>(&__op_)->__sender_;
         __final_op_t& __final_op = __op_.template emplace<1>(__conv{[&] {
-          return connect((_FinalSender&&) __final_sender, __final_receiver_t{this});
+          return stdexec::connect((_FinalSender&&) __final_sender, __final_receiver_t{this});
         }});
         start(__final_op);
       }
@@ -226,7 +230,8 @@ namespace exec {
         , __op_(std::in_place_index<0>, __conv{[&] {
                   return __initial_op_t{
                     (_FinalSender&&) __final_sender,
-                    connect((_InitialSender&&) __initial_sender, __initial_receiver_t{this})};
+                    stdexec::connect(
+                      (_InitialSender&&) __initial_sender, __initial_receiver_t{this})};
                 }}) {
       }
     };
@@ -259,11 +264,11 @@ namespace exec {
         }
 
         template <__decays_to<__t> _Self, class _Env>
-        friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env) noexcept
+        friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&) noexcept
           -> dependent_completion_signatures<_Env>;
 
         template <__decays_to<__t> _Self, __none_of<no_env> _Env>
-        friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env) noexcept
+        friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&) noexcept
           -> __completion_signatures_t<
             __copy_cvref_t<_Self, _InitialSender>,
             __copy_cvref_t<_Self, _FinalSender>,

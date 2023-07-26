@@ -55,7 +55,7 @@ namespace exec {
     template <class _ReceiverId>
     struct __when_empty_op_base : __task {
       using _Receiver = __t<_ReceiverId>;
-      [[no_unique_address]] _Receiver __rcvr_;
+      STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
     };
 
     template <class _ConstrainedId, class _ReceiverId>
@@ -65,7 +65,7 @@ namespace exec {
 
       explicit __when_empty_op(const __impl* __scope, _Constrained&& __sndr, _Receiver __rcvr)
         : __task{{}, __scope, __notify_waiter}
-        , __op_(connect((_Constrained&&) __sndr, (_Receiver&&) __rcvr)) {
+        , __op_(stdexec::connect((_Constrained&&) __sndr, (_Receiver&&) __rcvr)) {
       }
 
      private:
@@ -89,8 +89,7 @@ namespace exec {
         return __self.__start_();
       }
 
-      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-      connect_result_t<_Constrained, _Receiver> __op_;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS connect_result_t<_Constrained, _Receiver> __op_;
     };
 
     template <class _ConstrainedId>
@@ -111,15 +110,15 @@ namespace exec {
       }
 
       template <__decays_to<__when_empty_sender> _Self, class _Env>
-      friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
+      friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
         -> completion_signatures_of_t<__copy_cvref_t<_Self, _Constrained>, __env_t<_Env>>;
 
-      friend empty_env tag_invoke(get_env_t, const __when_empty_sender& __self) noexcept {
+      friend empty_env tag_invoke(get_env_t, const __when_empty_sender&) noexcept {
         return {};
       }
 
       const __impl* __scope_;
-      [[no_unique_address]] _Constrained __c_;
+      STDEXEC_NO_UNIQUE_ADDRESS _Constrained __c_;
     };
 
     template <class _Constrained>
@@ -131,11 +130,12 @@ namespace exec {
     struct __nest_op_base : __immovable {
       using _Receiver = __t<_ReceiverId>;
       const __impl* __scope_;
-      [[no_unique_address]] _Receiver __rcvr_;
+      STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
     };
 
     template <class _ReceiverId>
     struct __nest_rcvr {
+      using is_receiver = void;
       using _Receiver = __t<_ReceiverId>;
       __nest_op_base<_ReceiverId>* __op_;
 
@@ -177,13 +177,13 @@ namespace exec {
     struct __nest_op : __nest_op_base<_ReceiverId> {
       using _Constrained = __t<_ConstrainedId>;
       using _Receiver = __t<_ReceiverId>;
-      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-      connect_result_t<_Constrained, __nest_rcvr<_ReceiverId>> __op_;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS connect_result_t<_Constrained, __nest_rcvr<_ReceiverId>>
+        __op_;
 
       template <__decays_to<_Constrained> _Sender, __decays_to<_Receiver> _Rcvr>
       explicit __nest_op(const __impl* __scope, _Sender&& __c, _Rcvr&& __rcvr)
         : __nest_op_base<_ReceiverId>{{}, __scope, (_Rcvr&&) __rcvr}
-        , __op_(connect((_Sender&&) __c, __nest_rcvr<_ReceiverId>{this})) {
+        , __op_(stdexec::connect((_Sender&&) __c, __nest_rcvr<_ReceiverId>{this})) {
       }
      private:
       void __start_() noexcept {
@@ -206,7 +206,7 @@ namespace exec {
       using is_sender = void;
 
       const __impl* __scope_;
-      [[no_unique_address]] _Constrained __c_;
+      STDEXEC_NO_UNIQUE_ADDRESS _Constrained __c_;
 
       template <class _Receiver>
       using __nest_operation_t = __nest_op<_ConstrainedId, __x<_Receiver>>;
@@ -221,10 +221,10 @@ namespace exec {
           __self.__scope_, ((_Self&&) __self).__c_, (_Receiver&&) __rcvr};
       }
       template <__decays_to<__nest_sender> _Self, class _Env>
-      friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env)
+      friend auto tag_invoke(get_completion_signatures_t, _Self&&, _Env&&)
         -> completion_signatures_of_t<__copy_cvref_t<_Self, _Constrained>, __env_t<_Env>>;
 
-      friend empty_env tag_invoke(get_env_t, const __nest_sender& __self) noexcept {
+      friend empty_env tag_invoke(get_env_t, const __nest_sender&) noexcept {
         return {};
       }
     };
@@ -328,9 +328,9 @@ namespace exec {
         }
       }
 
-      [[no_unique_address]] _Receiver __rcvr_;
+      STDEXEC_NO_UNIQUE_ADDRESS _Receiver __rcvr_;
       std::unique_ptr<__future_state<_Sender, _Env>> __state_;
-      [[no_unique_address]] __forward_consumer __forward_consumer_;
+      STDEXEC_NO_UNIQUE_ADDRESS __forward_consumer __forward_consumer_;
 
      public:
       ~__future_op() noexcept {
@@ -468,6 +468,7 @@ namespace exec {
 
     template <class _CompletionsId, class _EnvId>
     struct __future_rcvr {
+      using is_receiver = void;
       using _Completions = __t<_CompletionsId>;
       using _Env = __t<_EnvId>;
       __future_state_base<_Completions, _Env>* __state_;
@@ -523,7 +524,9 @@ namespace exec {
 
       __future_state(_Sender __sndr, _Env __env, const __impl* __scope)
         : __future_state_base<_Completions, _Env>((_Env&&) __env, __scope)
-        , __op_(connect((_Sender&&) __sndr, __future_receiver_t<_Sender, _Env>{this, __scope})) {
+        , __op_(stdexec::connect(
+            (_Sender&&) __sndr,
+            __future_receiver_t<_Sender, _Env>{this, __scope})) {
       }
 
       connect_result_t<_Sender, __future_receiver_t<_Sender, _Env>> __op_;
@@ -573,10 +576,10 @@ namespace exec {
       }
 
       template <__decays_to<__future> _Self, class _OtherEnv>
-      friend auto tag_invoke(get_completion_signatures_t, _Self&&, _OtherEnv)
+      friend auto tag_invoke(get_completion_signatures_t, _Self&&, _OtherEnv&&)
         -> __completions_t<_Self>;
 
-      friend empty_env tag_invoke(get_env_t, const __future& __self) noexcept {
+      friend empty_env tag_invoke(get_env_t, const __future&) noexcept {
         return {};
       }
 
@@ -597,6 +600,7 @@ namespace exec {
 
     template <class _EnvId>
     struct __spawn_rcvr {
+      using is_receiver = void;
       using _Env = __t<_EnvId>;
       __spawn_op_base<_EnvId>* __op_;
       const __impl* __scope_;
@@ -633,7 +637,7 @@ namespace exec {
           [](__spawn_op_base<_EnvId>* __op) {
             delete static_cast<__spawn_op*>(__op);
           }}
-        , __op_(connect((_Sndr&&) __sndr, __spawn_receiver_t<_Env>{this, __scope})) {
+        , __op_(stdexec::connect((_Sndr&&) __sndr, __spawn_receiver_t<_Env>{this, __scope})) {
       }
 
       void __start_() noexcept {

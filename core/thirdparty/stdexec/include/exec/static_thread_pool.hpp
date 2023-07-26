@@ -66,13 +66,13 @@ namespace exec {
           stdexec::completion_signatures< stdexec::set_value_t(), stdexec::set_stopped_t()>;
        private:
         template <typename Receiver>
-        operation<stdexec::__x<stdexec::__decay_t<Receiver>>> make_operation_(Receiver&& r) const {
-          return operation<stdexec::__x<stdexec::__decay_t<Receiver>>>{pool_, (Receiver&&) r};
+        auto make_operation_(Receiver r) const -> operation<stdexec::__id<Receiver>> {
+          return operation<stdexec::__id<Receiver>>{pool_, (Receiver&&) r};
         }
 
         template <stdexec::receiver Receiver>
-        friend operation<stdexec::__x<stdexec::__decay_t<Receiver>>>
-          tag_invoke(stdexec::connect_t, sender s, Receiver&& r) {
+        friend auto tag_invoke(stdexec::connect_t, sender s, Receiver r)
+          -> operation<stdexec::__id<Receiver>> {
           return s.make_operation_((Receiver&&) r);
         }
 
@@ -128,7 +128,7 @@ namespace exec {
 
           bulk_task(bulk_shared_state* sh_state)
             : sh_state_(sh_state) {
-            this->__execute = [](task_base* t, std::uint32_t tid) noexcept {
+            this->__execute = [](task_base* t, const std::uint32_t tid) noexcept {
               auto& sh_state = *static_cast<bulk_task*>(t)->sh_state_;
               auto total_threads = sh_state.num_agents_required();
 
@@ -246,6 +246,7 @@ namespace exec {
 
       template <class SenderId, class ReceiverId, class Shape, class Fn, bool MayThrow>
       struct bulk_receiver {
+        using is_receiver = void;
         using Sender = stdexec::__t<SenderId>;
         using Receiver = stdexec::__t<ReceiverId>;
 
@@ -292,7 +293,7 @@ namespace exec {
           tag((Receiver&&) state.receiver_, (As&&) as...);
         }
 
-        friend auto tag_invoke(stdexec::get_env_t, const bulk_receiver& self)
+        friend auto tag_invoke(stdexec::get_env_t, const bulk_receiver& self) noexcept
           -> stdexec::env_of_t<Receiver> {
           return stdexec::get_env(self.shared_state_.receiver_);
         }
@@ -392,17 +393,16 @@ namespace exec {
         }
 
         template <stdexec::__decays_to<bulk_sender> Self, class Env>
-        friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
+        friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env&&)
           -> stdexec::dependent_completion_signatures<Env>;
 
         template <stdexec::__decays_to<bulk_sender> Self, class Env>
-        friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env)
+        friend auto tag_invoke(stdexec::get_completion_signatures_t, Self&&, Env&&)
           -> completion_signatures<Self, Env>
           requires true;
 
-        friend auto tag_invoke(stdexec::get_env_t, const bulk_sender& self) //
-          noexcept(stdexec::__nothrow_callable<stdexec::get_env_t, const Sender&>)
-            -> stdexec::__call_result_t<stdexec::get_env_t, const Sender&> {
+        friend auto tag_invoke(stdexec::get_env_t, const bulk_sender& self) noexcept
+          -> stdexec::env_of_t<const Sender&> {
           return stdexec::get_env(self.sndr_);
         }
       };
@@ -489,7 +489,7 @@ namespace exec {
     explicit operation(static_thread_pool& pool, Receiver&& r)
       : pool_(pool)
       , receiver_((Receiver&&) r) {
-      this->__execute = [](task_base* t, std::uint32_t /* tid */) noexcept {
+      this->__execute = [](task_base* t, const std::uint32_t /* tid */) noexcept {
         auto& op = *static_cast<operation*>(t);
         auto stoken = stdexec::get_stop_token(stdexec::get_env(op.receiver_));
         if constexpr (std::unstoppable_token<decltype(stoken)>) {
@@ -545,30 +545,24 @@ namespace exec {
     }
   }
 
-  inline void static_thread_pool::run(std::uint32_t index) noexcept {
+  inline void static_thread_pool::run(const std::uint32_t threadIndex) noexcept {
+    STDEXEC_ASSERT(threadIndex < threadCount_);
     while (true) {
-      std::uint32_t tid = index;
-
       task_base* task = nullptr;
-      for (std::uint32_t i = 0; i < threadCount_; ++i) {
-        auto queueIndex = (index + i) < threadCount_ ? (index + i) : (index + i - threadCount_);
-        auto& state = threadStates_[queueIndex];
-        task = state.try_pop();
-        if (task != nullptr) {
-          tid = queueIndex;
-          break;
-        }
-      }
+      std::uint32_t queueIndex = threadIndex;
 
-      if (task == nullptr) {
-        task = threadStates_[index].pop();
-        if (task == nullptr) {
-          // request_stop() was called.
-          return;
-        }
-      }
+      // Starting with this thread's queue, try to de-queue a task
+      // from each thread's queue. try_pop() is non-blocking.
+      do {
+        task = threadStates_[queueIndex].try_pop();
+      } while (!task && (++queueIndex %= threadCount_) != threadIndex);
 
-      task->__execute(task, tid);
+      STDEXEC_ASSERT(task || queueIndex == threadIndex);
+      // Make a blocking call to de-queue a task if we don't already have one.
+      if (!task && !(task = threadStates_[queueIndex].pop()))
+        return; // pop() only returns null when request_stop() was called.
+
+      task->__execute(task, queueIndex);
     }
   }
 

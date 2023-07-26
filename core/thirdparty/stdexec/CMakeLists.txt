@@ -177,12 +177,12 @@ target_compile_options(stdexec_executable_flags INTERFACE
                        -ftemplate-backtrace-limit=0>
                        )
 
-# Always enable colored output
-target_compile_options(stdexec_executable_flags INTERFACE
-                       $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:
-                       -fcolor-diagnostics>
-                       $<$<CXX_COMPILER_ID:GNU>:-fdiagnostics-color=always>
-                       )
+# # Always enable colored output
+# target_compile_options(stdexec_executable_flags INTERFACE
+#                        $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:
+#                        -fcolor-diagnostics>
+#                        $<$<CXX_COMPILER_ID:GNU>:-fdiagnostics-color=always>
+#                        )
 
 # Clang CUDA options
 target_compile_options(stdexec_executable_flags INTERFACE
@@ -254,49 +254,51 @@ if(STDEXEC_ENABLE_CUDA)
 endif ()
 
 
-option(STDEXEC_ENABLE_TBB "Enable TBB targets" OFF)
+# option(STDEXEC_ENABLE_TBB "Enable TBB targets" OFF)
 
-if (STDEXEC_ENABLE_TBB)
-    include(rapids-find)
-    rapids_find_package(
-        TBB REQUIRED
-        BUILD_EXPORT_SET stdexec-exports
-        INSTALL_EXPORT_SET stdexec-exports
-    )
+# if (STDEXEC_ENABLE_TBB)
+#     include(rapids-find)
+#     rapids_find_package(
+#         TBB REQUIRED
+#         BUILD_EXPORT_SET stdexec-exports
+#         INSTALL_EXPORT_SET stdexec-exports
+#     )
+#
+#     file(GLOB_RECURSE tbbexec_sources include/tbbexec/*.hpp)
+#     add_library(tbbexec INTERFACE ${tbbexec_sources})
+#     list(APPEND stdexec_export_targets tbbexec)
+#     add_library(STDEXEC::tbbexec ALIAS tbbexec)
+#
+#     target_link_libraries(tbbexec
+#         INTERFACE
+#         STDEXEC::stdexec
+#         TBB::tbb
+#         )
+# endif ()
 
-    file(GLOB_RECURSE tbbexec_sources include/tbbexec/*.hpp)
-    add_library(tbbexec INTERFACE ${tbbexec_sources})
-    list(APPEND stdexec_export_targets tbbexec)
-    add_library(STDEXEC::tbbexec ALIAS tbbexec)
+# option (STDEXEC_ENABLE_IO_URING_TESTS "Enable io_uring tests" OFF)
 
-    target_link_libraries(tbbexec
-        INTERFACE
-        STDEXEC::stdexec
-        TBB::tbb
-        )
-endif ()
-
-option(STDEXEC_BUILD_EXAMPLES "Build stdexec examples" OFF)
-option(STDEXEC_BUILD_TESTS "Build stdexec tests" OFF)
-option(BUILD_TESTING "" ${STDEXEC_BUILD_TESTS})
+# option(STDEXEC_BUILD_EXAMPLES "Build stdexec examples" OFF)
+# option(STDEXEC_BUILD_TESTS "Build stdexec tests" OFF)
+# option(BUILD_TESTING "" ${STDEXEC_BUILD_TESTS})
 
 # Don't build tests if configuring stdexec as a submodule of another
 # CMake project, unless they explicitly set STDEXEC_BUILD_TESTS=TRUE
-if ((CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME) OR STDEXEC_BUILD_TESTS)
+# if ((CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME) OR STDEXEC_BUILD_TESTS)
     # CTest automatically calls enable_testing() if BUILD_TESTING is ON
     # https://cmake.org/cmake/help/latest/module/CTest.html#module:CTest
-    include(CTest)
-endif()
+#     include(CTest)
+# endif()
 
 # Configure test executables
-if(BUILD_TESTING)
-    add_subdirectory(test)
-endif()
+# if(BUILD_TESTING)
+#     add_subdirectory(test)
+# endif()
 
 # Configure example executables
-if(STDEXEC_BUILD_EXAMPLES)
-    add_subdirectory(examples)
-endif()
+# if(STDEXEC_BUILD_EXAMPLES)
+#     add_subdirectory(examples)
+# endif()
 
 ##############################################################################
 # Install targets ------------------------------------------------------------

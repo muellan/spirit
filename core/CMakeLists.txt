@@ -218,6 +218,15 @@ endif()
 ####################################################################
 
 
+######### stdexec ##################3##################################
+set( STDEXEC_LIB  STDEXEC::stdexec )
+set( STDEXEC_INCLUDE_DIRS ${CMAKE_CURRENT_LIST_DIR}/thirdparty/stdexec/include )
+add_subdirectory( ${CMAKE_CURRENT_LIST_DIR}/thirdparty/stdexec )
+if( SPIRIT_USE_CUDA )
+endif()
+####################################################################
+
+
 ######## FFT decisions #############################################
 
 ## Comment these lines in (and edit the paths) if for some reason your fftw installation is not found
@@ -335,7 +344,7 @@ add_library( ${META_PROJECT_NAME} OBJECT
     ${SOURCE_SPIRIT_UTILITY} )
 
 set_target_properties( ${META_PROJECT_NAME} PROPERTIES
-    CXX_STANDARD            17
+    CXX_STANDARD            20
     CXX_STANDARD_REQUIRED   ON
     CXX_EXTENSIONS          OFF )
 
@@ -346,18 +355,19 @@ target_include_directories( ${META_PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/thirdparty
     ${CMAKE_CURRENT_LIST_DIR}/thirdparty/ovf/include
     ${CMAKE_CURRENT_LIST_DIR}/thirdparty/spectra/include
+    ${STDEXEC_INCLUDE_DIRS}
     ${libfmt_INCLUDE_DIRS}
     ${qhull_INCLUDE_DIRS}
     ${FFT_INCLUDE_DIRS} )
 
 target_link_libraries( ${META_PROJECT_NAME} INTERFACE
-    ${qhull_LIBS} ${OVF_LIBRARIES_STATIC} ${FFT_LIB} ${THREAD_LIBS} )
+    ${qhull_LIBS} ${OVF_LIBRARIES_STATIC} ${FFT_LIB} ${THREAD_LIBS} ${STDEXEC_LIB} )
 
 ### Flag needed to use fmt as header-only
 set( SPIRIT_COMPILE_DEFINITIONS ${SPIRIT_COMPILE_DEFINITIONS} -DFMT_HEADER_ONLY )
 
 ### Need to wait for QHull to finish before building
-add_dependencies( ${META_PROJECT_NAME} ${qhull_LIBS} )
+add_dependencies( ${META_PROJECT_NAME} ${qhull_LIBS} ${STDEXEC_LIB} )
 
 ### Extra CUDA things
 if( SPIRIT_USE_CUDA )
@@ -481,7 +491,7 @@ if( SPIRIT_BUILD_FOR_CXX OR SPIRIT_BUILD_FOR_JS )
             target_link_libraries( ${testName} ${META_PROJECT_NAME}_static )
             # Properties
             set_target_properties( ${testName} PROPERTIES
-                CXX_STANDARD             17
+                CXX_STANDARD             20
                 CXX_STANDARD_REQUIRED    ON
                 CXX_EXTENSIONS           OFF
                 RUNTIME_OUTPUT_DIRECTORY ${TEST_RUNTIME_OUTPUT_DIRECTORY} )
@@ -512,14 +522,14 @@ if( SPIRIT_BUILD_FOR_CXX OR SPIRIT_BUILD_FOR_JS )
         #----- Create test executables
         set( TEST_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR} )
         set( TEST_EXECUTABLES )
-        add_framework_test( test_vmath    test/test_vectormath.cpp )
-        add_framework_test( test_mmath    test/test_manifoldmath.cpp )
-        add_framework_test( test_api      test/test_api.cpp )
-        add_framework_test( test_solvers  test/test_solvers.cpp )
-        add_framework_test( test_physics  test/test_physics.cpp )
-        add_framework_test( test_ema      test/test_ema.cpp)
-        add_framework_test( test_io       test/test_io.cpp )
-        add_framework_test( test_anisotropy       test/test_anisotropy.cpp )
+        add_framework_test( test_vmath       test/test_vectormath.cpp )
+        add_framework_test( test_mmath       test/test_manifoldmath.cpp )
+        add_framework_test( test_api         test/test_api.cpp )
+        add_framework_test( test_solvers     test/test_solvers.cpp )
+        add_framework_test( test_physics     test/test_physics.cpp )
+        add_framework_test( test_ema         test/test_ema.cpp)
+        add_framework_test( test_io          test/test_io.cpp )
+        add_framework_test( test_anisotropy  test/test_anisotropy.cpp )
     endif()
     #--------------------------------------------------
 endif()
