@@ -7,8 +7,9 @@
 
 #include <Eigen/Core>
 
-#include <engine/Vectormath_Defines.hpp>
-#include <utility/Execution.hpp>
+// #include <engine/Vectormath_Defines.hpp>
+#include <engine/Vectormath.hpp>
+#include <utility/Stdexec_Algorithms.hpp>
 
 namespace Engine
 {
@@ -30,23 +31,23 @@ void normalize( vectorfield & vf );
 // Project v1 to be parallel to v2
 //      Note: this assumes normalized vectorfields
 void project_parallel( vectorfield & vf1, const vectorfield & vf2 );
-void project_parallel( Execution::Context, vectorfield & vf1, const vectorfield & vf2 );
+void project_parallel( Execution::Context, vectorfield &, const vectorfield & );
 // Project v1 to be orthogonal to v2
 //      Note: this assumes normalized vectorfields
 void project_orthogonal( vectorfield & vf1, const vectorfield & vf2 );
-void project_orthogonal( Execution::Context, vectorfield & vf1, const vectorfield & vf2 );
+void project_orthogonal( Execution::Context, vectorfield &, const vectorfield & );
 // Invert v1's component parallel to v2
 //      Note: this assumes normalized vectorfields
 void invert_parallel( vectorfield & vf1, const vectorfield & vf2 );
-void invert_parallel( Execution::Context, vectorfield & vf1, const vectorfield & vf2 );
+void invert_parallel( Execution::Context, vectorfield &, const vectorfield & );
 // Invert v1's component orthogonal to v2
 //      Note: this assumes normalized vectorfields
 void invert_orthogonal( vectorfield & vf1, const vectorfield & vf2 );
-void invert_orthogonal( Execution::Context, vectorfield & vf1, const vectorfield & vf2 );
+void invert_orthogonal( Execution::Context, vectorfield &, const vectorfield & );
 // Project vf1's vectors into the tangent plane of vf2
 //      Note: vf2 must have normalized vectors
 void project_tangential( vectorfield & vf1, const vectorfield & vf2 );
-void project_tangential( Execution::Context, vectorfield & vf1, const vectorfield & vf2 );
+void project_tangential( Execution::Context, vectorfield &, const vectorfield & );
 
 // The tangential projector is a matrix which projects any vector into the tangent
 //      space of a vectorfield, considered to live on the direct product of N unit
@@ -117,11 +118,78 @@ void hessian_covariant(
 
 // Geodesic distance between two vectorfields
 scalar dist_geodesic( const vectorfield & v1, const vectorfield & v2 );
+scalar dist_geodesic( Execution::Context, const vectorfield & v1, const vectorfield & v2 );
 
 // Calculate the "tangent" vectorfields pointing between a set of configurations
 void Tangents(
     std::vector<std::shared_ptr<vectorfield>> configurations, const std::vector<scalar> & energies,
     std::vector<vectorfield> & tangents );
+
+namespace
+{ // internal linkage
+
+[[nodiscard]] auto project_tangential_async( vectorfield_view vf1, const_vectorfield_view vf2 )
+{
+    return stdexec::bulk( range_size( vf1, vf2 ), [=]( std::size_t i ) { vf1[i] -= vf1[i].dot( vf2[i] ) * vf2[i]; } );
+}
+
+// [[nodiscard]]
+// auto project_parallel_async( vectorfield_view vf1, const_vectorfield_view vf2 )
+// {
+//     return
+//         Vectormath::dot_async(vf1, vf2)
+//     |   stdexec::bulk(range_size(vf1,vf2), [=](std::size_t i, scalar proj){
+//             vf1[i] = proj * vf2[i];
+//         });
+// }
+
+// [[nodiscard]]
+// auto project_orthogonal_async( vectorfield_view vf1, const_vectorfield_view vf2 )
+// {
+//     return
+//         Vectormath::dot_async(vf1, vf2)
+//     |   stdexec::bulk(range_size(vf1,vf2), [=](std::size_t i, scalar proj){
+//             vf1[i] -= proj * vf2[i];
+//         });
+// }
+
+// [[nodiscard]]
+// auto invert_parallel_async( vectorfield_view vf1, const_vectorfield_view vf2 )
+// {
+//     return
+//         Vectormath::dot_async(vf1, vf2)
+//     |   stdexec::bulk(range_size(vf1,vf2), [=](std::size_t i, scalar proj){
+//             vf1[i] -= 2 * proj * vf2[i];
+//         });
+// }
+
+// [[nodiscard]]
+// auto invert_orthogonal_async( vectorfield_view vf1, const_vectorfield_view vf2 )
+// {
+//     return
+//         Vectormath::dot_async(vf1, vf2)
+//     |   stdexec::bulk(range_size(vf1,vf2), [=](std::size_t i, scalar proj){
+//             vf1[i] -= 2 * (vf1[i] - proj * vf2[i]);
+//         });
+// }
+
+// [[nodiscard]]
+// auto dist_geodesic_async( const_vectorfield_view v1, const_vectorfield_view v2 )
+// {
+// TODO exec::reduce
+
+// return
+// |   stdexec::then([](scalar dist2){ return sqrt( dist2 ); });
+
+// scalar dist = 0;
+// #pragma omp parallel for reduction( + : dist )
+// for( unsigned int i = 0; i < v1.size(); ++i )
+//     dist += pow( Vectormath::angle( v1[i], v2[i] ), 2 );
+// return sqrt( dist );
+
+// }
+
+} // namespace
 
 } // namespace Manifoldmath
 } // namespace Engine

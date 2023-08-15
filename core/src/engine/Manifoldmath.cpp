@@ -4,7 +4,6 @@
 #include <utility/Constants.hpp>
 #include <utility/Exception.hpp>
 #include <utility/Logging.hpp>
-#include <utility/Stdexec_Algorithms.hpp>
 
 #include <Eigen/Dense>
 
@@ -27,12 +26,15 @@ void project_parallel( vectorfield & vf1, const vectorfield & vf2 )
         [vf1 = vf1.data(), vf2 = vf2.data(), proj] SPIRIT_LAMBDA( int idx ) { vf1[idx] = proj * vf2[idx]; } );
 }
 
-void project_parallel( 
-    Execution::Context ctx, vectorfield & vf1, const vectorfield & vf2 )
-{
-    const scalar proj = Vectormath::dot(vf1, vf2);
-    transform(ctx, vf2, vf1, [=](const auto& v2){ return proj * v2; });
-}
+// void project_parallel(
+//     Execution::Context ctx, vectorfield & vf1, const vectorfield & vf2 )
+// {
+//     auto task =
+//         stdexec::schedule(ctx.get_scheduler())
+//     |   project_parallel_async(view_of(vf1), view_of(vf2));
+//
+//     stdexec::sync_wait(std::move(task)).value();
+// }
 
 
 
@@ -44,15 +46,15 @@ void project_orthogonal( vectorfield & vf1, const vectorfield & vf2 )
         vf1[i] -= x * vf2[i];
 }
 
-void project_orthogonal(
-    Execution::Context ctx, vectorfield & vf1, const vectorfield & vf2 )
-{
-    const scalar x = Vectormath::dot( vf1, vf2 );
-
-    zip_transform(ctx, vf1, vf2, vf1, [x](const auto& v1, const auto& v2){
-        return Vector3{v1 - x * v2};
-    });
-}
+// void project_orthogonal( 
+//     Execution::Context ctx, vectorfield_view vf1, const_vectorfield_view vf2 )
+// {
+//     auto task =
+//         stdexec::schedule(ctx.get_scheduler())
+//     |   project_orthogonal_async(view_of(vf1), view_of(vf2));
+//
+//     stdexec::sync_wait(std::move(task)).value();
+// }
 
 
 
@@ -64,15 +66,15 @@ void invert_parallel( vectorfield & vf1, const vectorfield & vf2 )
         vf1[i] -= 2 * x * vf2[i];
 }
 
-void invert_parallel(
-    Execution::Context ctx, vectorfield & vf1, const vectorfield & vf2 )
-{
-    const scalar x = Vectormath::dot( vf1, vf2 );
-
-    zip_transform(ctx, vf1, vf2, vf1, [x](const auto& v1, const auto& v2){
-        return Vector3{v1 - 2 * x * v2};
-    });
-}
+// void invert_parallel( 
+//     Execution::Context ctx, vectorfield_view vf1, const_vectorfield_view vf2 )
+// {
+//     auto task =
+//         stdexec::schedule(ctx.get_scheduler())
+//     |   invert_parallel_async(view_of(vf1), view_of(vf2));
+//
+//     stdexec::sync_wait(std::move(task)).value();
+// }
 
 
 
@@ -85,16 +87,15 @@ void invert_orthogonal( vectorfield & vf1, const vectorfield & vf2 )
         vf1[i] -= 2 * vf3[i];
 }
 
-void invert_orthogonal(
-    Execution::Context ctx, vectorfield & vf1, const vectorfield & vf2 )
-{
-    vectorfield vf3 = vf1;
-    project_orthogonal( vf3, vf2 );
-
-    zip_transform(ctx, vf1, vf3, vf1, [](const auto& v1, const auto& v3){
-            return Vector3{v1 - 2 * v3};
-    });
-}
+// void invert_orthogonal( 
+//     Execution::Context ctx, vectorfield_view vf1, const_vectorfield_view vf2 )
+// {
+//     auto task =
+//         stdexec::schedule(ctx.get_scheduler())
+//     |   invert_orthogonal_async(view_of(vf1), view_of(vf2));
+//
+//     stdexec::sync_wait(std::move(task)).value();
+// }
 
 
 
@@ -108,33 +109,35 @@ void project_tangential( vectorfield & vf1, const vectorfield & vf2 )
 void project_tangential(
     Execution::Context ctx, vectorfield & vf1, const vectorfield & vf2 )
 {
-    zip_transform(ctx, vf1, vf2, vf1, [](const auto& v1, const auto& v2){
-        return Vector3{v1 - (v1.dot(v2) * v2)};
-    });
+    auto task =
+        stdexec::schedule(ctx.get_scheduler())
+    |   project_tangential_async(view_of(vf1), view_of(vf2));
+
+    stdexec::sync_wait(std::move(task)).value();
 }
 
 
 
-scalar dist_geodesic( const vectorfield & v1, const vectorfield & v2 )
+scalar dist_geodesic( const vectorfield & vf1, const vectorfield & vf2 )
 {
     scalar dist = 0;
 #pragma omp parallel for reduction( + : dist )
-    for( unsigned int i = 0; i < v1.size(); ++i )
-        dist += pow( Vectormath::angle( v1[i], v2[i] ), 2 );
+    for( unsigned int i = 0; i < vf1.size(); ++i )
+        dist += pow( Vectormath::angle( vf1[i], vf2[i] ), 2 );
     return sqrt( dist );
 }
 
-scalar dist_geodesic(
-    Execution::Context ctx, const vectorfield & vf1, const vectorfield & vf2 )
-{
-    auto const dist = zip_reduce_sum(ctx, vf1, vf2, scalar(0),
-        [](const Vector3& v1, const Vector3& v2){
-            const scalar a = Vectormath::angle( v1, v2 );
-            return a * a;
-        });
-
-    return sqrt( dist );
-}
+// scalar dist_geodesic(
+//     Execution::Context ctx, const vectorfield & vf1, const vectorfield & vf2 )
+// {
+//     auto task =
+//         stdexec::schedule(ctx.get_scheduler())
+//     |   dist_geodesic_async(view_of(vf1), view_of(vf2));
+//
+//     auto [dist2] = stdexec::sync_wait(std::move(task)).value();
+//
+//     return sqrt( dist2 );
+// }
 
 
 
