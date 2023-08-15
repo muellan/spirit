@@ -149,10 +149,10 @@ void Method_LLG<solver>::Calculate_Force_Virtual(
 
     for( std::size_t cidx = 0; cidx < configurations.size(); ++cidx )
     {
-        auto image         = view_of(*configurations[cidx]);
-        auto force         = view_of(forces[cidx]);
+        auto image         = const_view_of(*configurations[cidx]);
+        auto force         = const_view_of(forces[cidx]);
+        auto grad          = const_view_of(Gradient);
         auto force_virtual = view_of(forces_virtual[cidx]);
-        auto grad          = view_of(Gradient);
         auto const& parameters = *this->systems[cidx]->llg_parameters;
 
         //////////
