@@ -9,6 +9,7 @@
 #include <utility/Cubic_Hermite_Spline.hpp>
 #include <utility/Logging.hpp>
 #include <utility/Version.hpp>
+#include <utility/Stdexec_Algorithms.hpp>
 
 #include <fmt/format.h>
 #include <Eigen/Geometry>
@@ -368,6 +369,7 @@ void Method_GNEB<solver>::Calculate_Force_Virtual(
     std::vector<vectorfield> & forces_virtual )
 {
     using namespace Utility;
+    using namespace Execution;
 
     // Calculate the cross product with the spin configuration to get direct minimization
     for( std::size_t i = 0; i < configurations.size(); ++i )
@@ -378,20 +380,25 @@ void Method_GNEB<solver>::Calculate_Force_Virtual(
             continue;
         }
 
-        auto & image         = *configurations[i];
-        auto & force         = forces[i];
-        auto & force_virtual = forces_virtual[i];
-        auto & parameters    = *this->systems[i]->llg_parameters;
+        auto image         = view_of(*configurations[i]);
+        auto force         = view_of(forces[i]);
+        auto force_virtual = view_of(forces_virtual[i]);
+        auto & parameters  = *this->systems[i]->llg_parameters;
 
         // dt = time_step [ps] * gyromagnetic ratio / mu_B / (1+damping^2) <- not implemented
         scalar dtg = parameters.dt * Constants::gamma / Constants::mu_B;
-        Vectormath::set_c_cross( dtg, image, force, force_virtual );
+
+        generate_indexed(exec_context, force_virtual, [=](std::size_t i) { 
+            return Vector3{ dtg * image[i].cross( force[i] ) };
+        });
 
 // TODO: add Temperature effects!
 
 // Apply Pinning
 #ifdef SPIRIT_ENABLE_PINNING
-        Vectormath::set_c_a( 1, force_virtual, force_virtual, chain->images[i]->geometry->mask_unpinned );
+        auto mask = view_of(chain->images[i]->geometry->mask_unpinned);
+        generate_indexed(exec_context, force_virtual,
+        [=](std::size_t i) { return mask[i] * force_virtual[i]; });
 #endif // SPIRIT_ENABLE_PINNING
     }
 }

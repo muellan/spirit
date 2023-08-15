@@ -36,6 +36,8 @@ public:
         std::vector<vectorfield> & forces ) override; // Moved to public, because of cuda device lambda restrictions
 
 private:
+    using Method::exec_context;
+
     // Calculate Forces onto Systems
     void Calculate_Force_Virtual(
         const std::vector<std::shared_ptr<vectorfield>> & configurations, const std::vector<vectorfield> & forces,
