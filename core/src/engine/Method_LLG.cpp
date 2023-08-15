@@ -91,7 +91,6 @@ void Method_LLG<solver>::Prepare_Thermal_Field()
                 parameters.temperature_gradient_inclination, this->temperature_distribution, 0, 1e30 );
 
             // TODO: parallelization of this is actually not quite so trivial
-            // #pragma omp parallel for
             for( std::size_t i = 0; i < this->xi.size(); ++i )
             {
                 for( int dim = 0; dim < 3; ++dim )
@@ -103,7 +102,6 @@ void Method_LLG<solver>::Prepare_Thermal_Field()
         else if( parameters.temperature > 0 )
         {
             // TODO: parallelization of this is actually not quite so trivial
-            // #pragma omp parallel for
             for( std::size_t i = 0; i < this->xi.size(); ++i )
             {
                 for( int dim = 0; dim < 3; ++dim )
@@ -118,23 +116,25 @@ template<Solver solver>
 void Method_LLG<solver>::Calculate_Force(
     const std::vector<std::shared_ptr<vectorfield>> & configurations, std::vector<vectorfield> & forces )
 {
+
     // Loop over images to calculate the total force on each Image
     for( std::size_t img = 0; img < this->systems.size(); ++img )
     {
         // Minus the gradient is the total Force here
         this->systems[img]->hamiltonian->Gradient_and_Energy( *configurations[img], Gradient[img], current_energy );
 
+        auto grad = view_of(Gradient[img]);
+
 #ifdef SPIRIT_ENABLE_PINNING
-        generate_indexed(exec_context, Gradient[img],
-        [=,grad=view_of(Gradient)](std::size_t i) { 
-            return mask[i] * grad[img][i];
+        auto mask = view_of(this->systems[img]->geometry->mask_unpinned);
+        generate_indexed(exec_context, grad, [=](std::size_t i) { 
+            return mask[i] * grad[i];
         });
 #endif // SPIRIT_ENABLE_PINNING
 
         // Copy out
-        generate_indexed(exec_context, forces[img], 
-        [=,grad=view_of(Gradient)](std::size_t i) { 
-            return Vector3{-1 * grad[img][i]};
+        generate_indexed(exec_context, forces[img], [=](std::size_t i) { 
+            return Vector3{-1 * grad[i]};
         });
     }
 }
@@ -206,14 +206,14 @@ void Method_LLG<solver>::Calculate_Force_Virtual(
                 if( parameters.stt_use_gradient )
                 {
                     auto & boundary_conditions = this->systems[0]->hamiltonian->boundary_conditions;
-
                     // Gradient approximation for in-plane currents
-                    Vectormath::jacobian( exec_context, image, geometry, boundary_conditions, jacobians );
+                    auto js = view_of(jacobians);
+                    Vectormath::jacobian( exec_context, image, geometry, boundary_conditions, js );
 
                     for_each(exec_context, index_range{force_virtual.size()},
-                    [=, s_c_grad=view_of(s_c_grad), jacobians=view_of(jacobians)](std::size_t i)
+                    [=, s_c_grad=view_of(s_c_grad)](std::size_t i)
                     {
-                        s_c_grad[i] = jacobians[i] * s_c_vec;
+                        s_c_grad[i] = js[i] * s_c_vec;
                         // TODO: replace 'a_j' with 'b_j'
                         force_virtual[i] += 
                             dtg * a_j * (damping - beta) * s_c_grad[i] +
@@ -250,11 +250,9 @@ void Method_LLG<solver>::Calculate_Force_Virtual(
 
 // Apply Pinning
 #ifdef SPIRIT_ENABLE_PINNING
-        // auto const& mask = this->systems[0]->geometry->mask_unpinned;
-        // generate_indexed(exec_context, force_virtual,
-        // [force_virtual=view_of(force_virtual)](std::size_t i) { 
-        //     return mask[i] * force_virtual[i]; 
-        // });
+        auto mask = view_of(this->systems[0]->geometry->mask_unpinned);
+        generate_indexed(exec_context, force_virtual,
+        [=](std::size_t i) { return mask[i] * force_virtual[i]; });
 #endif // SPIRIT_ENABLE_PINNING
     }
 }
@@ -308,8 +306,19 @@ void Method_LLG<solver>::Hook_Post_Iteration()
     // ToDo: How to update eff_field without numerical overhead?
     // systems[0]->effective_field = Gradient[0];
     // Vectormath::scale(systems[0]->effective_field, -1);
-    Manifoldmath::project_tangential( this->forces[0], *this->systems[0]->spins );
-    Vectormath::set_c_a( 1, this->forces[0], this->systems[0]->effective_field );
+
+    auto forces    = view_of(this->forces[0]);
+    auto spins     = view_of(*this->systems[0]->spins);
+    auto eff_field = view_of(this->systems[0]->effective_field);
+
+    auto task = schedule(exec_context)
+    |   Manifoldmath::project_tangential_async(forces, spins)
+    |   stdexec::bulk(range_size(forces, eff_field),
+            [=](auto i){ eff_field[i] = forces[i]; });
+
+    stdexec::sync_wait(std::move(task)).value();
+
+
     // systems[0]->UpdateEffectiveField();
 
     // TODO: In order to update Rx with the neighbouring images etc., we need the state -> how to do this?
