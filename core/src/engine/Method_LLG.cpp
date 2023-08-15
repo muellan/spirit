@@ -125,14 +125,16 @@ void Method_LLG<solver>::Calculate_Force(
         this->systems[img]->hamiltonian->Gradient_and_Energy( *configurations[img], Gradient[img], current_energy );
 
 #ifdef SPIRIT_ENABLE_PINNING
-        generate_indexed(exec_context, Gradient[img], [&](std::size_t i) { 
-            return mask[i] * Gradient[img][i];
+        generate_indexed(exec_context, Gradient[img],
+        [=,grad=view_of(Gradient)](std::size_t i) { 
+            return mask[i] * grad[img][i];
         });
 #endif // SPIRIT_ENABLE_PINNING
 
         // Copy out
-        generate_indexed(exec_context, forces[img], [&](std::size_t i) { 
-            return Vector3{-1 * Gradient[img][i]};
+        generate_indexed(exec_context, forces[img], 
+        [=,grad=view_of(Gradient)](std::size_t i) { 
+            return Vector3{-1 * grad[img][i]};
         });
     }
 }
@@ -147,10 +149,11 @@ void Method_LLG<solver>::Calculate_Force_Virtual(
 
     for( std::size_t cidx = 0; cidx < configurations.size(); ++cidx )
     {
-        auto const& image      = *configurations[cidx];
-        auto const& force      = forces[cidx];
+        auto image         = view_of(*configurations[cidx]);
+        auto force         = view_of(forces[cidx]);
+        auto force_virtual = view_of(forces_virtual[cidx]);
+        auto grad          = view_of(Gradient);
         auto const& parameters = *this->systems[cidx]->llg_parameters;
-        auto & force_virtual   = forces_virtual[cidx];
 
         //////////
         // time steps
@@ -172,7 +175,7 @@ void Method_LLG<solver>::Calculate_Force_Virtual(
                 dtg = 1.0;
             }
 
-            generate_indexed(exec_context, force_virtual, [&](std::size_t i) { 
+            generate_indexed(exec_context, force_virtual, [=](std::size_t i) { 
                 return Vector3{ dtg * image[i].cross( force[i] ) };
             });
         }
@@ -181,11 +184,13 @@ void Method_LLG<solver>::Calculate_Force_Virtual(
         {
             auto const& geometry = *this->systems[0]->geometry;
 
-            generate_indexed(exec_context, force_virtual, [&](std::size_t i) { 
+            generate_indexed(exec_context, force_virtual,
+            [=, mu_s=view_of(geometry.mu_s)](std::size_t i)
+            { 
                 auto fvi = force[i];
                 fvi *= dtg;
                 fvi += dtg * damping * image[i].cross(force[i]);
-                fvi /= geometry.mu_s[i];
+                fvi /= mu_s[i];
                 return fvi;
             });
 
@@ -195,8 +200,8 @@ void Method_LLG<solver>::Calculate_Force_Virtual(
             // STT
             if( a_j > 0 )
             {
-                Vector3 s_c_vec  = parameters.stt_polarisation_normal;
-                scalar beta      = parameters.beta; // non-adiabatic parameter of correction term
+                Vector3 s_c_vec = parameters.stt_polarisation_normal;
+                scalar beta     = parameters.beta; // non-adiabatic parameter of correction term
 
                 if( parameters.stt_use_gradient )
                 {
@@ -205,7 +210,9 @@ void Method_LLG<solver>::Calculate_Force_Virtual(
                     // Gradient approximation for in-plane currents
                     Vectormath::jacobian( exec_context, image, geometry, boundary_conditions, jacobians );
 
-                    for_each(exec_context, index_range{force_virtual.size()}, [&](std::size_t i) {
+                    for_each(exec_context, index_range{force_virtual.size()},
+                    [=, s_c_grad=view_of(s_c_grad), jacobians=view_of(jacobians)](std::size_t i)
+                    {
                         s_c_grad[i] = jacobians[i] * s_c_vec;
                         // TODO: replace 'a_j' with 'b_j'
                         force_virtual[i] += 
@@ -215,9 +222,11 @@ void Method_LLG<solver>::Calculate_Force_Virtual(
                     // gradient in current direction, thus => *(-1)
                 }
                 else
-                {   
+                {
                     // Monolayer approximation
-                    generate_indexed(exec_context, force_virtual, [&](std::size_t i) {
+                    generate_indexed(exec_context, force_virtual,
+                    [=](std::size_t i)
+                    {
                         return force_virtual[i]
                             - dtg * a_j * (damping - beta)     * s_c_vec
                             - dtg * a_j * (1 + beta * damping) * s_c_vec.cross(image[i]);
@@ -228,10 +237,12 @@ void Method_LLG<solver>::Calculate_Force_Virtual(
             // Temperature
             if( parameters.temperature > 0 || parameters.temperature_gradient_inclination != 0 )
             {
-                generate_indexed(exec_context, force_virtual, [&](std::size_t i) {
+                generate_indexed(exec_context, force_virtual,
+                [=, xi=view_of(this->xi)](std::size_t i)
+                {
                     return force_virtual[i]
-                        + this->xi[i]
-                        + damping * image[i].cross(this->xi[i]);
+                        + xi[i]
+                        + damping * image[i].cross(xi[i]);
                 });
             }
         }
@@ -239,9 +250,11 @@ void Method_LLG<solver>::Calculate_Force_Virtual(
 
 // Apply Pinning
 #ifdef SPIRIT_ENABLE_PINNING
-        auto const& mask = this->systems[0]->geometry->mask_unpinned;
-        generate_indexed(exec_context, force_virtual,
-            [&](std::size_t i) { return mask[i] * force_virtual[i]; });
+        // auto const& mask = this->systems[0]->geometry->mask_unpinned;
+        // generate_indexed(exec_context, force_virtual,
+        // [force_virtual=view_of(force_virtual)](std::size_t i) { 
+        //     return mask[i] * force_virtual[i]; 
+        // });
 #endif // SPIRIT_ENABLE_PINNING
     }
 }

@@ -24,98 +24,103 @@ namespace stdexec {
   template <class _Tp>
   _Tp&& __declval() noexcept;
 
+
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  // __decay_t: An efficient implementation for std::decay
+    template <class _Ty>
+    using __decay_t = std::__decay_t<_Ty>;
+
+// fails with Clang 17 with C++20 and CUDA
+// __decay_t: An efficient implementation for std::decay
 // #if STDEXEC_HAS_BUILTIN(__decay)
 //
+//     template <class _Ty>
+//     using __decay_t = __decay_t<_Ty>;
+//
+// #elif STDEXEC_NVHPC()
+//
 //   template <class _Ty>
-//   using __decay_t = __decay(_Ty);
-
-#if STDEXEC_NVHPC()
-
-  template <class _Ty>
-  using __decay_t = std::decay_t<_Ty>;
-
-#else
-
-  namespace __tt {
-    struct __decay_object {
-      template <class _Ty>
-      static _Ty __g(_Ty const &);
-      template <class _Ty>
-      using __f = decltype(__g(__declval<_Ty>()));
-    };
-
-    struct __decay_default {
-      template <class _Ty>
-      static _Ty __g(_Ty);
-      template <class _Ty>
-      using __f = decltype(__g(__declval<_Ty>()));
-    };
-
-    struct __decay_abominable {
-      template <class _Ty>
-      using __f = _Ty;
-    };
-
-    struct __decay_void {
-      template <class _Ty>
-      using __f = void;
-    };
-
-    template <class _Ty>
-    extern __decay_object __mdecay;
-
-    template <class _Ty, class... Us>
-    extern __decay_default __mdecay<_Ty(Us...)>;
-
-    template <class _Ty, class... Us>
-    extern __decay_default __mdecay<_Ty(Us...) noexcept>;
-
-    template <class _Ty, class... Us>
-    extern __decay_default __mdecay<_Ty (&)(Us...)>;
-
-    template <class _Ty, class... Us>
-    extern __decay_default __mdecay<_Ty (&)(Us...) noexcept>;
-
-    template <class _Ty, class... Us>
-    extern __decay_abominable __mdecay<_Ty(Us...) const>;
-
-    template <class _Ty, class... Us>
-    extern __decay_abominable __mdecay<_Ty(Us...) const noexcept>;
-
-    template <class _Ty, class... Us>
-    extern __decay_abominable __mdecay<_Ty(Us...) const &>;
-
-    template <class _Ty, class... Us>
-    extern __decay_abominable __mdecay<_Ty(Us...) const & noexcept>;
-
-    template <class _Ty, class... Us>
-    extern __decay_abominable __mdecay<_Ty(Us...) const &&>;
-
-    template <class _Ty, class... Us>
-    extern __decay_abominable __mdecay<_Ty(Us...) const && noexcept>;
-
-    template <class _Ty>
-    extern __decay_default __mdecay<_Ty[]>;
-
-    template <class _Ty, std::size_t N>
-    extern __decay_default __mdecay<_Ty[N]>;
-
-    template <class _Ty, std::size_t N>
-    extern __decay_default __mdecay<_Ty (&)[N]>;
-
-    template <>
-    inline __decay_void __mdecay<void>;
-
-    template <>
-    inline __decay_void __mdecay<void const>;
-  } // namespace __tt
-
-  template <class _Ty>
-  using __decay_t = typename decltype(__tt::__mdecay<_Ty>)::template __f<_Ty>;
-
-#endif
+//   using __decay_t = std::decay_t<_Ty>;
+//
+// #else
+//
+//   namespace __tt {
+//     struct __decay_object {
+//       template <class _Ty>
+//       static _Ty __g(_Ty const &);
+//       template <class _Ty>
+//       using __f = decltype(__g(__declval<_Ty>()));
+//     };
+//
+//     struct __decay_default {
+//       template <class _Ty>
+//       static _Ty __g(_Ty);
+//       template <class _Ty>
+//       using __f = decltype(__g(__declval<_Ty>()));
+//     };
+//
+//     struct __decay_abominable {
+//       template <class _Ty>
+//       using __f = _Ty;
+//     };
+//
+//     struct __decay_void {
+//       template <class _Ty>
+//       using __f = void;
+//     };
+//
+//     template <class _Ty>
+//     extern __decay_object __mdecay;
+//
+//     template <class _Ty, class... Us>
+//     extern __decay_default __mdecay<_Ty(Us...)>;
+//
+//     template <class _Ty, class... Us>
+//     extern __decay_default __mdecay<_Ty(Us...) noexcept>;
+//
+//     template <class _Ty, class... Us>
+//     extern __decay_default __mdecay<_Ty (&)(Us...)>;
+//
+//     template <class _Ty, class... Us>
+//     extern __decay_default __mdecay<_Ty (&)(Us...) noexcept>;
+//
+//     template <class _Ty, class... Us>
+//     extern __decay_abominable __mdecay<_Ty(Us...) const>;
+//
+//     template <class _Ty, class... Us>
+//     extern __decay_abominable __mdecay<_Ty(Us...) const noexcept>;
+//
+//     template <class _Ty, class... Us>
+//     extern __decay_abominable __mdecay<_Ty(Us...) const &>;
+//
+//     template <class _Ty, class... Us>
+//     extern __decay_abominable __mdecay<_Ty(Us...) const & noexcept>;
+//
+//     template <class _Ty, class... Us>
+//     extern __decay_abominable __mdecay<_Ty(Us...) const &&>;
+//
+//     template <class _Ty, class... Us>
+//     extern __decay_abominable __mdecay<_Ty(Us...) const && noexcept>;
+//
+//     template <class _Ty>
+//     extern __decay_default __mdecay<_Ty[]>;
+//
+//     template <class _Ty, std::size_t N>
+//     extern __decay_default __mdecay<_Ty[N]>;
+//
+//     template <class _Ty, std::size_t N>
+//     extern __decay_default __mdecay<_Ty (&)[N]>;
+//
+//     template <>
+//     inline __decay_void __mdecay<void>;
+//
+//     template <>
+//     inline __decay_void __mdecay<void const>;
+//   } // namespace __tt
+//
+//   template <class _Ty>
+//   using __decay_t = typename decltype(__tt::__mdecay<_Ty>)::template __f<_Ty>;
+//
+// #endif
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // __copy_cvref_t: For copying cvref from one type to another

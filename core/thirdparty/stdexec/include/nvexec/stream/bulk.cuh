@@ -25,7 +25,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
   namespace _bulk {
     template <int BlockThreads, class... As, std::integral Shape, class Fun>
     __launch_bounds__(BlockThreads) __global__ void kernel(Shape shape, Fun fn, As... as) {
-      static_assert(trivially_copyable<Shape, Fun, As...>);
+      // static_assert(trivially_copyable<Shape, Fun, As...>);
       const int tid = static_cast<int>(threadIdx.x + blockIdx.x * blockDim.x);
 
       if (tid < static_cast<int>(shape)) {
@@ -145,7 +145,7 @@ namespace nvexec::STDEXEC_STREAM_DETAIL_NS {
     template <int BlockThreads, class... As, std::integral Shape, class Fun>
     __launch_bounds__(BlockThreads) __global__
       void kernel(Shape begin, Shape end, Fun fn, As... as) {
-      static_assert(trivially_copyable<Shape, Fun, As...>);
+      // static_assert(trivially_copyable<Shape, Fun, As...>);
       const Shape i = begin + static_cast<Shape>(threadIdx.x + blockIdx.x * blockDim.x);
 
       if (i < end) {

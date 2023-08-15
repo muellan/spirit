@@ -772,6 +772,8 @@ void directional_gradient(
     }
 }
 
+
+HOSTDEVICEQUALIFIER
 int linear_index(
     const int ib, int a, int b, int c,
     const int n_cell_atoms, const int n_cells[3], const int bc[3],
@@ -820,10 +822,10 @@ int linear_index(
 
 void jacobian (
     Execution::Context exec_context,
-    const vectorfield & vf,
+    const_vectorfield_view vf,
     const Data::Geometry & geometry,
     const intfield & boundary_conditions,
-    field<Matrix3> & jacobian )
+    matrixfield_view jacobian )
 {
     const int ncells[3]        { geometry.n_cells[0], geometry.n_cells[1], geometry.n_cells[2] };
     const int boundary_cond[3] { boundary_conditions[0], boundary_conditions[1], boundary_conditions[2] };
@@ -847,25 +849,28 @@ void jacobian (
 
     // 4.) Loop over spins
     // note: indices change most frequently from left to right
+    const auto n_atoms = geometry.n_cell_atoms;
+    const auto& n_cells = geometry.n_cells;
+
     for_each_grid_index(exec_context,
-        std::array{geometry.n_cell_atoms, geometry.n_cells[0], geometry.n_cells[1], geometry.n_cells[2]},
-        [&,m_matrix = Matrix3{}] (auto const& idx) mutable
+        std::array{n_atoms, n_cells[0], n_cells[1], n_cells[2]},
+        [=,m_matrix = Matrix3{}] (auto const& idx) mutable
         {
             const auto [ib,a,b,c] = idx;
 
-            const auto idx_cur = linear_index( ib, a, b, c, geometry.n_cell_atoms, ncells, boundary_cond, true );
+            const auto idx_cur = linear_index( ib, a, b, c, n_atoms, ncells, boundary_cond, true );
 
             for( int trans_idx = 0; trans_idx < 3; trans_idx++ ) {
                 const auto& trans = translations[trans_idx];
 
                 // apply translations in positive direction
                 const auto idx0 = linear_index(
-                    ib, a + trans[0], b + trans[1], c + trans[2], geometry.n_cell_atoms, ncells,
+                    ib, a + trans[0], b + trans[1], c + trans[2], n_atoms, ncells,
                     boundary_cond );
 
                 // apply translations in negative direction
                 const auto idx1 = linear_index(
-                    ib, a - trans[0], b - trans[1], c - trans[2], geometry.n_cell_atoms, ncells,
+                    ib, a - trans[0], b - trans[1], c - trans[2], n_atoms, ncells,
                     boundary_cond );
 
                 Vector3 m0 = { 0, 0, 0 };

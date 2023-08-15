@@ -12,13 +12,13 @@
     #include <omp.h>
 #endif
 
-#include <concepts>
-#include <algorithm>
-#include <execution>
-#include <numeric>
-#include <ranges>
-#include <span>
+// #include <execution>
 #include <utility>
+#include <concepts>
+#include <ranges>
+#include <algorithm>
+#include <span>
+#include <numeric>
 
 
 namespace Execution {
@@ -38,48 +38,6 @@ concept IndexToValueMapping =
     std::invocable<Fn,std::size_t> &&
     std::convertible_to<std::invoke_result_t<Fn,std::size_t>,
                         std::ranges::range_value_t<Range>>;
-
-
-
-// template <typename Fn, typename Range>
-// concept Transformation = 
-//     std::copy_constructible<Fn> &&
-//     std::invocable<Fn,std::ranges::range_value_t<Range>> &&
-//     std::convertible_to<std::invoke_result_t<Fn,std::ranges::range_value_t<Range>>,
-//                         std::ranges::range_value_t<Range>>;
-
-
-
-// template <typename Fn, typename Range>
-// concept IndexTransformation = 
-//     std::copy_constructible<Fn> &&
-//     std::invocable<Fn,std::ranges::range_value_t<Range>,std::size_t> &&
-//     std::convertible_to<std::invoke_result_t<Fn,std::ranges::range_value_t<Range>,std::size_t>,
-//                         std::ranges::range_value_t<Range>>;
-
-
-
-// template <typename Fn, typename T>
-// concept NearestNeighborFn = 
-//     std::floating_point<T> &&
-//     std::invocable<Fn,T,T,T,T,T> &&
-//     std::same_as<T,std::invoke_result_t<Fn,T,T,T,T,T>>;
-
-
-
-// template <typename Fn, typename T>
-// concept ReductionOperation =
-//     std::copy_constructible<Fn> &&
-//     std::invocable<Fn,T,T> &&
-//     std::convertible_to<T,std::invoke_result_t<Fn,T,T>>;
-
-
-
-// template <typename Fn, typename T>
-// concept PairReductionOperation =
-//     std::copy_constructible<Fn> &&
-//     std::invocable<Fn,T,T,T> &&
-//     std::convertible_to<T,std::invoke_result_t<Fn,T,T,T>>;
 
 
 
@@ -103,7 +61,7 @@ auto for_each_async (Context ctx, InRange&& input, Body body)
 
     return
         stdexec::transfer_just(ctx.get_scheduler(),
-                               view_of((InRange&&)(input))) 
+                               view_of((InRange&&)input)) 
     |   stdexec::bulk(tileCount,
         [=](std::size_t tileIdx, auto in)
         {
@@ -127,7 +85,7 @@ requires
     std::invocable<Body,std::ranges::range_value_t<InRange>>
 void for_each (Context ctx, InRange&& input, Body&& body)
 {
-    auto task = for_each_async(ctx, (InRange&&)(input), (Body&&)(body)); 
+    auto task = for_each_async(ctx, (InRange&&)input, (Body&&)body); 
     stdexec::sync_wait(std::move(task)).value();
 }
 
@@ -151,7 +109,7 @@ void for_each_grid_index (Context ctx, GridExtents ext, Body body)
     auto sched = ctx.get_scheduler();
 
     auto task = stdexec::schedule(sched) 
-    |   stdexec::bulk(tileCount, [&](std::size_t tileIdx)
+    |   stdexec::bulk(tileCount, [=](std::size_t tileIdx) mutable
         {
             // start/end of collapsed index range
             auto const start = tileIdx * tileSize;

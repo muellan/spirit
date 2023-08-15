@@ -2,6 +2,8 @@
 #ifndef SPIRIT_CORE_UTILITY_INDICES_HPP
 #define SPIRIT_CORE_UTILITY_INDICES_HPP
 
+#include <utility/Execution_Defs.hpp>
+
 #include <iterator>
 #include <cstdint>
 
@@ -34,25 +36,36 @@ public:
         value_type i_ = 0;
 
     public:
+        HOSTDEVICEQUALIFIER
         constexpr
         iterator () = default;
 
+        HOSTDEVICEQUALIFIER
         constexpr explicit
         iterator (value_type i) noexcept : i_{i} {}
 
-        [[nodiscard]] constexpr
+        [[nodiscard]]
+        HOSTDEVICEQUALIFIER
+        constexpr
         value_type operator * () const noexcept { return i_; }
 
-        [[nodiscard]] constexpr
+        [[nodiscard]]
+        HOSTDEVICEQUALIFIER
+        constexpr
         value_type operator [] (difference_type idx) const noexcept { 
             return i_ + idx;
         }
 
+        HOSTDEVICEQUALIFIER
         constexpr auto operator <=> (iterator const&) const noexcept = default;
 
+        HOSTDEVICEQUALIFIER
         constexpr iterator& operator ++ () noexcept { ++i_; return *this; }
+
+        HOSTDEVICEQUALIFIER
         constexpr iterator& operator -- () noexcept { ++i_; return *this; }
 
+        HOSTDEVICEQUALIFIER
         constexpr iterator
         operator ++ (int) noexcept { 
             auto old {*this};
@@ -60,6 +73,7 @@ public:
             return old;
         }
 
+        HOSTDEVICEQUALIFIER
         constexpr iterator
         operator -- (int) noexcept { 
             auto old {*this};
@@ -67,39 +81,51 @@ public:
             return old;
         }
 
+        HOSTDEVICEQUALIFIER
         constexpr iterator&
         operator += (difference_type offset) noexcept { 
             i_ += offset;
             return *this;
         }
 
+        HOSTDEVICEQUALIFIER
         constexpr iterator&
         operator -= (difference_type offset) noexcept { 
             i_ -= offset;
             return *this;
         }
 
-        [[nodiscard]] constexpr friend iterator
+        [[nodiscard]]
+        HOSTDEVICEQUALIFIER
+        constexpr friend iterator
         operator + (iterator const& it, difference_type idx) noexcept { 
             return iterator{it.i_ + idx}; 
         }
 
-        [[nodiscard]] constexpr friend iterator
+        [[nodiscard]]
+        HOSTDEVICEQUALIFIER
+        constexpr friend iterator
         operator + (difference_type idx, iterator const& it) noexcept { 
             return iterator{it.i_ + idx}; 
         }
 
-        [[nodiscard]] constexpr friend iterator
+        [[nodiscard]]
+        HOSTDEVICEQUALIFIER
+        constexpr friend iterator
         operator - (iterator const& it, difference_type idx) noexcept { 
             return iterator{it.i_ - idx}; 
         }
 
-        [[nodiscard]] constexpr friend iterator
+        [[nodiscard]]
+        HOSTDEVICEQUALIFIER
+        constexpr friend iterator
         operator - (difference_type idx, iterator const& it) noexcept { 
             return iterator{it.i_ - idx}; 
         }
 
-        [[nodiscard]] friend constexpr
+        [[nodiscard]]
+        HOSTDEVICEQUALIFIER
+        friend constexpr
         difference_type operator - (iterator const& a, iterator const& b) noexcept { 
             return difference_type(b.i_) - difference_type(a.i_);
         }
@@ -108,52 +134,64 @@ public:
     using const_iterator = iterator;
 
 
+    HOSTDEVICEQUALIFIER
     constexpr
     index_range () = default;
 
+    HOSTDEVICEQUALIFIER
     constexpr explicit
     index_range (value_type end) noexcept:
         beg_{0}, end_{end}
     {}
 
+    HOSTDEVICEQUALIFIER
     constexpr explicit
     index_range (value_type beg, value_type end) noexcept:
         beg_{beg}, end_{end}
     {}
 
 
-    [[nodiscard]] constexpr
+    [[nodiscard]]
+    HOSTDEVICEQUALIFIER
+    constexpr
     value_type operator [] (size_type idx) const noexcept { return beg_ + idx; }
 
 
     [[nodiscard]]
+    HOSTDEVICEQUALIFIER
     size_type size () const noexcept { return end_ - beg_; }
 
     [[nodiscard]]
+    HOSTDEVICEQUALIFIER
     bool empty () const noexcept { return end_ <= beg_; }
 
 
-    [[nodiscard]] constexpr
+    [[nodiscard]]
+    HOSTDEVICEQUALIFIER
+    constexpr
     iterator begin () const noexcept { return iterator{beg_}; }
 
-    [[nodiscard]] constexpr
+    [[nodiscard]]
+    HOSTDEVICEQUALIFIER
+    constexpr
     iterator end () const noexcept { return iterator{end_}; }
 
 
-    [[nodiscard]] friend constexpr
+    [[nodiscard]]
+    HOSTDEVICEQUALIFIER
+    friend constexpr
     iterator begin (index_range const& r) noexcept { return r.begin(); }
 
-    [[nodiscard]] friend constexpr
+    [[nodiscard]]
+    HOSTDEVICEQUALIFIER
+    friend constexpr
     iterator end (index_range const& r) noexcept { return r.end(); }
+
+    [[nodiscard]]
+    HOSTDEVICEQUALIFIER
+    friend constexpr index_range const&
+    make_view (index_range const& r) noexcept { return r; }         
 };
-
-
-
-
-//-----------------------------------------------------------------------------
-[[nodiscard]] inline constexpr auto                           
-view_of (index_range const& s) noexcept { return s; }         
-
 
 
 }  // namespace Utility
