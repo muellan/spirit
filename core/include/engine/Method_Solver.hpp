@@ -128,6 +128,8 @@ protected:
         return Method::ContinueIterating() && !this->Converged();
     }
 
+    using Method::exec_context;
+
     // Initialise contains the initialisations of arrays etc. for a certain solver
     void Initialize() override;
     void Finalize() override;

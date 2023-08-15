@@ -29,6 +29,8 @@ inline void Method_Solver<Solver::Heun>::Initialize()
 template<>
 inline void Method_Solver<Solver::Heun>::Iteration()
 {
+    using namespace Execution;
+
     // Generate random vectors for this iteration
     this->Prepare_Thermal_Field();
 
@@ -37,19 +39,22 @@ inline void Method_Solver<Solver::Heun>::Iteration()
     this->Calculate_Force_Virtual( this->configurations, this->forces, this->forces_virtual );
 
     // Predictor for each image
-    for( int i = 0; i < this->noi; ++i )
+    for( int img = 0; img < this->noi; ++img )
     {
-        auto & conf           = *this->configurations[i];
-        auto & conf_temp      = *this->configurations_temp[i];
-        auto & conf_predictor = *this->configurations_predictor[i];
+        auto vforces        = const_view_of( forces_virtual[img] );
+        auto conf           = const_view_of( *this->configurations[img] );
+        auto conf_temp      = view_of( *this->configurations_temp[img] );
+        auto conf_predictor = view_of( *this->configurations_predictor[img] );
 
-        // First step - Predictor
-        Vectormath::set_c_cross( -1, conf, forces_virtual[i], conf_temp ); // temp1 = -( conf x A )
-        Vectormath::set_c_a( 1, conf, conf_predictor );                    // configurations_predictor = conf
-        Vectormath::add_c_a( 1, conf_temp, conf_predictor );               // configurations_predictor = conf + dt*temp1
-
-        // Normalize spins
-        Vectormath::normalize_vectors( conf_predictor );
+        generate_indexed(
+            exec_context, conf_predictor,
+            [=]( std::size_t i )
+            {
+                conf_temp[i] = -1 * conf[i].cross( vforces[i] );
+                Vector3 s{ conf[i] + conf_temp[i] };
+                s.normalize();
+                return s;
+            } );
     }
 
     // Calculate_Force for the Corrector
@@ -58,24 +63,22 @@ inline void Method_Solver<Solver::Heun>::Iteration()
         this->configurations_predictor, this->forces_predictor, this->forces_virtual_predictor );
 
     // Corrector step for each image
-    for( int i = 0; i < this->noi; i++ )
+    for( int img = 0; img < this->noi; img++ )
     {
-        auto & conf           = *this->configurations[i];
-        auto & conf_temp      = *this->configurations_temp[i];
-        auto & conf_predictor = *this->configurations_predictor[i];
+        auto conf_predictor    = const_view_of( *this->configurations_predictor[img] );
+        auto vforces_predictor = const_view_of( forces_virtual_predictor[img] );
+        auto conf_temp         = view_of( *this->configurations_temp[img] );
+        auto conf              = view_of( *this->configurations[img] );
 
         // Second step - Corrector
-        Vectormath::scale( conf_temp, 0.5 );       // configurations_temp = 0.5 * configurations_temp
-        Vectormath::add_c_a( 1, conf, conf_temp ); // configurations_temp = conf + 0.5 * configurations_temp
-        Vectormath::set_c_cross( -1, conf_predictor, forces_virtual_predictor[i], temp1 ); // temp1 = - ( conf' x A' )
-        Vectormath::add_c_a(
-            0.5, temp1, conf_temp ); // configurations_temp = conf + 0.5 * configurations_temp + 0.5 * temp1
-
-        // Normalize spins
-        Vectormath::normalize_vectors( conf_temp );
-
-        // Copy out
-        conf = conf_temp;
+        generate_indexed(
+            exec_context, conf,
+            [=]( std::size_t i )
+            {
+                conf_temp[i] = conf[i] + 0.5 * conf_temp[i] - 0.5 * conf_predictor[i].cross( vforces_predictor[i] );
+                conf_temp[i].normalize();
+                return conf_temp[i];
+            } );
     }
 }
 
