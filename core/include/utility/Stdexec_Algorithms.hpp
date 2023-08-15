@@ -21,6 +21,7 @@
 #include <numeric>
 
 
+// clang-format off
 namespace Execution {
 
 
@@ -898,6 +899,6 @@ reduce (
 
 
 }  // namespace Execution
-
+// clang-format on
 
 #endif
