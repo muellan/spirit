@@ -50,7 +50,7 @@ Matrix3 dreibein( const Vector3 & normal );
 // Angle between two vectors, assuming both are normalized
 scalar angle( const Vector3 & v1, const Vector3 & v2 );
 // Rotate a vector around an axis by a certain degree (Implemented with Rodrigue's formula)
-void rotate( const Vector3 & v, const Vector3 & axis, const scalar & angle, Vector3 & v_out );
+void rotate( const Vector3 & v, const Vector3 & axis, scalar angle, Vector3 & v_out );
 void rotate( const vectorfield & v, const vectorfield & axis, const scalarfield & angle, vectorfield & v_out );
 
 // Decompose a vector into numbers of translations in a basis
@@ -136,7 +136,7 @@ scalar max_abs_component( const vectorfield & vf );
 scalar max_norm( const vectorfield & vf );
 
 // Scale a vectorfield by a given value
-void scale( vectorfield & vf, const scalar & sc );
+void scale( vectorfield & vf, scalar sc );
 
 // Scale a vectorfield by a scalarfield or its inverse
 void scale( vectorfield & vf, const scalarfield & sf, bool inverse = false );
@@ -168,52 +168,52 @@ void dot( const scalarfield & sf1, const scalarfield & sf2, scalarfield & out );
 void cross( const vectorfield & vf1, const vectorfield & vf2, vectorfield & out );
 
 // out[i] += c*a
-void add_c_a( const scalar & c, const Vector3 & a, vectorfield & out );
+void add_c_a( scalar c, const Vector3 & a, vectorfield & out );
 // out[i] += c*a[i]
-void add_c_a( const scalar & c, const vectorfield & vf, vectorfield & out );
-void add_c_a( const scalar & c, const vectorfield & vf, vectorfield & out, const intfield & mask );
+void add_c_a( scalar c, const vectorfield & vf, vectorfield & out );
+void add_c_a( scalar c, const vectorfield & vf, vectorfield & out, const intfield & mask );
 // out[i] += c[i]*a[i]
 void add_c_a( const scalarfield & c, const vectorfield & vf, vectorfield & out );
 
 // out[i] = c*a
-void set_c_a( const scalar & c, const Vector3 & a, vectorfield & out );
-void set_c_a( const scalar & c, const Vector3 & a, vectorfield & out, const intfield & mask );
+void set_c_a( scalar c, const Vector3 & a, vectorfield & out );
+void set_c_a( scalar c, const Vector3 & a, vectorfield & out, const intfield & mask );
 // out[i] = c*a[i]
-void set_c_a( const scalar & c, const vectorfield & vf, vectorfield & out );
-void set_c_a( const scalar & c, const vectorfield & vf, vectorfield & out, const intfield & mask );
+void set_c_a( scalar c, const vectorfield & vf, vectorfield & out );
+void set_c_a( scalar c, const vectorfield & vf, vectorfield & out, const intfield & mask );
 // out[i] = c[i]*a[i]
 void set_c_a( const scalarfield & sf, const vectorfield & vf, vectorfield & out );
 
 // out[i] += c * a*b[i]
-void add_c_dot( const scalar & c, const Vector3 & a, const vectorfield & b, scalarfield & out );
+void add_c_dot( scalar c, const Vector3 & a, const vectorfield & b, scalarfield & out );
 // out[i] += c * a[i]*b[i]
-void add_c_dot( const scalar & c, const vectorfield & a, const vectorfield & b, scalarfield & out );
+void add_c_dot( scalar c, const vectorfield & a, const vectorfield & b, scalarfield & out );
 
 // out[i] = c * a*b[i]
-void set_c_dot( const scalar & c, const Vector3 & a, const vectorfield & b, scalarfield & out );
+void set_c_dot( scalar c, const Vector3 & a, const vectorfield & b, scalarfield & out );
 // out[i] = c * a[i]*b[i]
-void set_c_dot( const scalar & c, const vectorfield & a, const vectorfield & b, scalarfield & out );
+void set_c_dot( scalar c, const vectorfield & a, const vectorfield & b, scalarfield & out );
 
 // out[i] += c * a x b[i]
-void add_c_cross( const scalar & c, const Vector3 & a, const vectorfield & b, vectorfield & out );
+void add_c_cross( scalar c, const Vector3 & a, const vectorfield & b, vectorfield & out );
 // out[i] += c * a[i] x b[i]
-void add_c_cross( const scalar & c, const vectorfield & a, const vectorfield & b, vectorfield & out );
+void add_c_cross( scalar c, const vectorfield & a, const vectorfield & b, vectorfield & out );
 // out[i] += c[i] * a[i] x b[i]
 void add_c_cross( const scalarfield & c, const vectorfield & a, const vectorfield & b, vectorfield & out );
 
 // out[i] = c * a x b[i]
-void set_c_cross( const scalar & c, const Vector3 & a, const vectorfield & b, vectorfield & out );
+void set_c_cross( scalar c, const Vector3 & a, const vectorfield & b, vectorfield & out );
 // out[i] = c * a[i] x b[i]
-void set_c_cross( const scalar & c, const vectorfield & a, const vectorfield & b, vectorfield & out );
+void set_c_cross( scalar c, const vectorfield & a, const vectorfield & b, vectorfield & out );
 
-namespace
-{ // internal linkage
+// clang-format off
+namespace { // internal linkage
 
 // // computes the inner product of two vectorfields v1 and v2
 // [[nodiscard]]
 // auto dot_async( const_vectorfield_view v1, const_vectorfield_view v2 )
 // {
-//     // TODO exec::reduce
+//     // TODO use exec::reduce
 //
 //     return stdexec::then([](auto&&...){ return scalar(0); });
 //
@@ -226,18 +226,27 @@ namespace
 // }
 
 // computes the inner products of vectors in vf1 and vf2
-[[nodiscard]] auto dot_async( const_vectorfield_view vf1, const_vectorfield_view vf2, scalarfield_view out )
+[[nodiscard]]
+auto dot_async( const_vectorfield_view vf1, const_vectorfield_view vf2, scalarfield_view out )
 {
-    return stdexec::bulk( range_size( vf1, vf2, out ), [=]( std::size_t i ) { out[i] = vf1[i].dot( vf2[i] ); } );
+    return 
+        stdexec::bulk( range_size( vf1, vf2, out ), [=]( std::size_t i ) { 
+            out[i] = vf1[i].dot( vf2[i] );
+        } );
 }
 
 // computes the product of scalars in s1 and s2
-[[nodiscard]] auto dot_async( const_scalarfield_view s1, const_scalarfield_view s2, scalarfield_view out )
+[[nodiscard]]
+auto dot_async( const_scalarfield_view s1, const_scalarfield_view s2, scalarfield_view out )
 {
-    return stdexec::bulk( range_size( s1, s2, out ), [=]( std::size_t i ) { out[i] = s1[i] * s2[i]; } );
+    return 
+        stdexec::bulk( range_size( s1, s2, out ), [=]( std::size_t i ) {
+            out[i] = s1[i] * s2[i];
+        } );
 }
 
 } // namespace
+// clang-format on
 
 } // namespace Vectormath
 } // namespace Engine

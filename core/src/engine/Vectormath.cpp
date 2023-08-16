@@ -174,7 +174,7 @@ scalar max_abs_component( const vectorfield & vf )
     return absmax;
 }
 
-void scale( vectorfield & vf, const scalar & sc )
+void scale( vectorfield & vf, scalar sc )
 {
 #pragma omp parallel for
     for( unsigned int i = 0; i < vf.size(); ++i )
@@ -257,20 +257,20 @@ void cross( const vectorfield & v1, const vectorfield & v2, vectorfield & out )
 }
 
 // out[i] += c*a
-void add_c_a( const scalar & c, const Vector3 & vec, vectorfield & out )
+void add_c_a( scalar c, const Vector3 & vec, vectorfield & out )
 {
 #pragma omp parallel for
     for( unsigned int idx = 0; idx < out.size(); ++idx )
         out[idx] += c * vec;
 }
 // out[i] += c*a[i]
-void add_c_a( const scalar & c, const vectorfield & vf, vectorfield & out )
+void add_c_a( scalar c, const vectorfield & vf, vectorfield & out )
 {
 #pragma omp parallel for
     for( unsigned int idx = 0; idx < out.size(); ++idx )
         out[idx] += c * vf[idx];
 }
-void add_c_a( const scalar & c, const vectorfield & vf, vectorfield & out, const intfield & mask )
+void add_c_a( scalar c, const vectorfield & vf, vectorfield & out, const intfield & mask )
 {
 #pragma omp parallel for
     for( unsigned int idx = 0; idx < out.size(); ++idx )
@@ -285,14 +285,14 @@ void add_c_a( const scalarfield & c, const vectorfield & vf, vectorfield & out )
 }
 
 // out[i] = c*a
-void set_c_a( const scalar & c, const Vector3 & vec, vectorfield & out )
+void set_c_a( scalar c, const Vector3 & vec, vectorfield & out )
 {
 #pragma omp parallel for
     for( unsigned int idx = 0; idx < out.size(); ++idx )
         out[idx] = c * vec;
 }
 // out[i] = c*a
-void set_c_a( const scalar & c, const Vector3 & vec, vectorfield & out, const intfield & mask )
+void set_c_a( scalar c, const Vector3 & vec, vectorfield & out, const intfield & mask )
 {
 #pragma omp parallel for
     for( unsigned int idx = 0; idx < out.size(); ++idx )
@@ -300,14 +300,14 @@ void set_c_a( const scalar & c, const Vector3 & vec, vectorfield & out, const in
 }
 
 // out[i] = c*a[i]
-void set_c_a( const scalar & c, const vectorfield & vf, vectorfield & out )
+void set_c_a( scalar c, const vectorfield & vf, vectorfield & out )
 {
 #pragma omp parallel for
     for( unsigned int idx = 0; idx < out.size(); ++idx )
         out[idx] = c * vf[idx];
 }
 // out[i] = c*a[i]
-void set_c_a( const scalar & c, const vectorfield & vf, vectorfield & out, const intfield & mask )
+void set_c_a( scalar c, const vectorfield & vf, vectorfield & out, const intfield & mask )
 {
 #pragma omp parallel for
     for( unsigned int idx = 0; idx < out.size(); ++idx )
@@ -322,14 +322,14 @@ void set_c_a( const scalarfield & c, const vectorfield & vf, vectorfield & out )
 }
 
 // out[i] += c * a*b[i]
-void add_c_dot( const scalar & c, const Vector3 & vec, const vectorfield & vf, scalarfield & out )
+void add_c_dot( scalar c, const Vector3 & vec, const vectorfield & vf, scalarfield & out )
 {
 #pragma omp parallel for
     for( unsigned int idx = 0; idx < out.size(); ++idx )
         out[idx] += c * vec.dot( vf[idx] );
 }
 // out[i] += c * a[i]*b[i]
-void add_c_dot( const scalar & c, const vectorfield & vf1, const vectorfield & vf2, scalarfield & out )
+void add_c_dot( scalar c, const vectorfield & vf1, const vectorfield & vf2, scalarfield & out )
 {
 #pragma omp parallel for
     for( unsigned int idx = 0; idx < out.size(); ++idx )
@@ -337,14 +337,14 @@ void add_c_dot( const scalar & c, const vectorfield & vf1, const vectorfield & v
 }
 
 // out[i] = c * a*b[i]
-void set_c_dot( const scalar & c, const Vector3 & a, const vectorfield & b, scalarfield & out )
+void set_c_dot( scalar c, const Vector3 & a, const vectorfield & b, scalarfield & out )
 {
 #pragma omp parallel for
     for( unsigned int idx = 0; idx < out.size(); ++idx )
         out[idx] = c * a.dot( b[idx] );
 }
 // out[i] = c * a[i]*b[i]
-void set_c_dot( const scalar & c, const vectorfield & a, const vectorfield & b, scalarfield & out )
+void set_c_dot( scalar c, const vectorfield & a, const vectorfield & b, scalarfield & out )
 {
 #pragma omp parallel for
     for( unsigned int idx = 0; idx < out.size(); ++idx )
@@ -352,14 +352,14 @@ void set_c_dot( const scalar & c, const vectorfield & a, const vectorfield & b, 
 }
 
 // out[i] += c * a x b[i]
-void add_c_cross( const scalar & c, const Vector3 & a, const vectorfield & b, vectorfield & out )
+void add_c_cross( scalar c, const Vector3 & a, const vectorfield & b, vectorfield & out )
 {
 #pragma omp parallel for
     for( unsigned int idx = 0; idx < out.size(); ++idx )
         out[idx] += c * a.cross( b[idx] );
 }
 // out[i] += c * a[i] x b[i]
-void add_c_cross( const scalar & c, const vectorfield & a, const vectorfield & b, vectorfield & out )
+void add_c_cross( scalar c, const vectorfield & a, const vectorfield & b, vectorfield & out )
 {
 #pragma omp parallel for
     for( unsigned int idx = 0; idx < out.size(); ++idx )
@@ -374,14 +374,14 @@ void add_c_cross( const scalarfield & c, const vectorfield & a, const vectorfiel
 }
 
 // out[i] = c * a x b[i]
-void set_c_cross( const scalar & c, const Vector3 & a, const vectorfield & b, vectorfield & out )
+void set_c_cross( scalar c, const Vector3 & a, const vectorfield & b, vectorfield & out )
 {
 #pragma omp parallel for
     for( unsigned int idx = 0; idx < out.size(); ++idx )
         out[idx] = c * a.cross( b[idx] );
 }
 // out[i] = c * a[i] x b[i]
-void set_c_cross( const scalar & c, const vectorfield & a, const vectorfield & b, vectorfield & out )
+void set_c_cross( scalar c, const vectorfield & a, const vectorfield & b, vectorfield & out )
 {
 #pragma omp parallel for
     for( unsigned int idx = 0; idx < out.size(); ++idx )
@@ -473,10 +473,11 @@ scalar solid_angle_2( const Vector3 & v1, const Vector3 & v2, const Vector3 & v3
     return solid_angle;
 }
 
-void rotate( const Vector3 & v, const Vector3 & axis, const scalar & angle, Vector3 & v_out )
+void rotate( const Vector3 & v, const Vector3 & axis, scalar angle, Vector3 & v_out )
 {
-    v_out = v * std::cos( angle ) + axis.cross( v ) * std::sin( angle )
-            + axis * axis.dot( v ) * ( 1 - std::cos( angle ) );
+    const auto ca = std::cos(angle);
+    v_out = v * ca + axis.cross( v ) * std::sin( angle )
+          + axis * axis.dot( v ) * ( 1 - ca );
 }
 
 // XXX: should we add test for that function since it's calling the already tested rotat()
