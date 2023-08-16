@@ -166,8 +166,8 @@ jobs:
         sudo dpkg -i cuda-keyring_1.0-1_all.deb
         sudo apt-get update
         sudo apt-get -y install cuda
-        echo "/usr/local/cuda-12.1/bin" >> $GITHUB_PATH
-        echo "/usr/local/cuda-12.1/lib64" >> $GITHUB_PATH
+        echo "/usr/local/cuda-12.2/bin" >> $GITHUB_PATH
+        echo "/usr/local/cuda-12.2/lib64" >> $GITHUB_PATH
 
     - name: 📚 Install LLVM (MacOS)
       if: matrix.os == 'macos-13'
@@ -199,7 +199,7 @@ jobs:
       if: matrix.parallelisation == 'cuda'
       shell: bash
       working-directory: ${{runner.workspace}}/build
-      run: cmake $GITHUB_WORKSPACE -DCMAKE_CUDA_COMPILER=clang++ -DSPIRIT_CUDA_ARCH=70 -DCMAKE_BUILD_TYPE=$BUILD_TYPE $CMAKE_FLAGS -DSPIRIT_USE_CUDA=ON -DCUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda-12.1/
+      run: cmake $GITHUB_WORKSPACE -DCMAKE_CUDA_COMPILER=clang++ -DSPIRIT_CUDA_ARCH=70 -DCMAKE_BUILD_TYPE=$BUILD_TYPE $CMAKE_FLAGS -DSPIRIT_USE_CUDA=ON -DCUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda-12.2/
 
     - name: ⚙ Configure with OpenMP
       if: matrix.parallelisation == 'openmp'
