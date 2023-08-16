@@ -293,7 +293,7 @@ scalar max_abs_component( const vectorfield & vf )
     // Determine temporary device storage requirements
     void * d_temp_storage     = NULL;
     size_t temp_storage_bytes = 0;
-    auto lam = [] __host__ __device__( const scalar & a, const scalar & b ) { return ( a > b ) ? a : b; };
+    auto lam = [] __host__ __device__( scalar a, scalar b ) { return ( a > b ) ? a : b; };
     cub::DeviceReduce::Reduce( d_temp_storage, temp_storage_bytes, vf[0].data(), out.data(), N, lam, init );
     // Allocate temporary storage
     cudaMalloc( &d_temp_storage, temp_storage_bytes );
@@ -319,7 +319,7 @@ scalar max_norm( const vectorfield & vf )
 
     void * d_temp_storage     = NULL;
     size_t temp_storage_bytes = 0;
-    auto lam = [] __host__ __device__( const scalar & a, const scalar & b ) { return ( a > b ) ? a : b; };
+    auto lam = [] __host__ __device__( scalar a, scalar b ) { return ( a > b ) ? a : b; };
 
     scalar init = 0;
     cub::DeviceReduce::Reduce( d_temp_storage, temp_storage_bytes, temp.data(), ret.data(), N, lam, init );
@@ -340,7 +340,7 @@ __global__ void cu_scale( Vector3 * vf1, scalar sc, size_t N )
         vf1[idx] *= sc;
     }
 }
-void scale( vectorfield & vf, const scalar & sc )
+void scale( vectorfield & vf, scalar sc )
 {
     int n = vf.size();
     cu_scale<<<( n + 1023 ) / 1024, 1024>>>( vf.data(), sc, n );
@@ -483,7 +483,7 @@ __global__ void cu_add_c_a( scalar c, Vector3 a, Vector3 * out, size_t N )
     }
 }
 // out[i] += c*a
-void add_c_a( const scalar & c, const Vector3 & a, vectorfield & out )
+void add_c_a( scalar c, const Vector3 & a, vectorfield & out )
 {
     int n = out.size();
     cu_add_c_a<<<( n + 1023 ) / 1024, 1024>>>( c, a, out.data(), n );
@@ -499,7 +499,7 @@ __global__ void cu_add_c_a2( scalar c, const Vector3 * a, Vector3 * out, size_t 
     }
 }
 // out[i] += c*a[i]
-void add_c_a( const scalar & c, const vectorfield & a, vectorfield & out )
+void add_c_a( scalar c, const vectorfield & a, vectorfield & out )
 {
     int n = out.size();
     cu_add_c_a2<<<( n + 1023 ) / 1024, 1024>>>( c, a.data(), out.data(), n );
@@ -515,7 +515,7 @@ __global__ void cu_add_c_a2_mask( scalar c, const Vector3 * a, Vector3 * out, co
     }
 }
 // out[i] += c*a[i]
-void add_c_a( const scalar & c, const vectorfield & a, vectorfield & out, const intfield & mask )
+void add_c_a( scalar c, const vectorfield & a, vectorfield & out, const intfield & mask )
 {
     int n = out.size();
     cu_add_c_a2_mask<<<( n + 1023 ) / 1024, 1024>>>( c, a.data(), out.data(), mask.data(), n );
@@ -547,7 +547,7 @@ __global__ void cu_set_c_a( scalar c, Vector3 a, Vector3 * out, size_t N )
     }
 }
 // out[i] = c*a
-void set_c_a( const scalar & c, const Vector3 & a, vectorfield & out )
+void set_c_a( scalar c, const Vector3 & a, vectorfield & out )
 {
     int n = out.size();
     cu_set_c_a<<<( n + 1023 ) / 1024, 1024>>>( c, a, out.data(), n );
@@ -562,7 +562,7 @@ __global__ void cu_set_c_a_mask( scalar c, Vector3 a, Vector3 * out, const int *
     }
 }
 // out[i] = c*a
-void set_c_a( const scalar & c, const Vector3 & a, vectorfield & out, const intfield & mask )
+void set_c_a( scalar c, const Vector3 & a, vectorfield & out, const intfield & mask )
 {
     int n = out.size();
     cu_set_c_a_mask<<<( n + 1023 ) / 1024, 1024>>>( c, a, out.data(), mask.data(), n );
@@ -578,7 +578,7 @@ __global__ void cu_set_c_a2( scalar c, const Vector3 * a, Vector3 * out, size_t 
     }
 }
 // out[i] = c*a[i]
-void set_c_a( const scalar & c, const vectorfield & a, vectorfield & out )
+void set_c_a( scalar c, const vectorfield & a, vectorfield & out )
 {
     int n = out.size();
     cu_set_c_a2<<<( n + 1023 ) / 1024, 1024>>>( c, a.data(), out.data(), n );
@@ -593,7 +593,7 @@ __global__ void cu_set_c_a2_mask( scalar c, const Vector3 * a, Vector3 * out, co
     }
 }
 // out[i] = c*a[i]
-void set_c_a( const scalar & c, const vectorfield & a, vectorfield & out, const intfield & mask )
+void set_c_a( scalar c, const vectorfield & a, vectorfield & out, const intfield & mask )
 {
     int n = out.size();
     cu_set_c_a2_mask<<<( n + 1023 ) / 1024, 1024>>>( c, a.data(), out.data(), mask.data(), n );
@@ -625,7 +625,7 @@ __global__ void cu_add_c_dot( scalar c, Vector3 a, const Vector3 * b, scalar * o
     }
 }
 // out[i] += c * a*b[i]
-void add_c_dot( const scalar & c, const Vector3 & a, const vectorfield & b, scalarfield & out )
+void add_c_dot( scalar c, const Vector3 & a, const vectorfield & b, scalarfield & out )
 {
     int n = out.size();
     cu_add_c_dot<<<( n + 1023 ) / 1024, 1024>>>( c, a, b.data(), out.data(), n );
@@ -641,7 +641,7 @@ __global__ void cu_add_c_dot( scalar c, const Vector3 * a, const Vector3 * b, sc
     }
 }
 // out[i] += c * a[i]*b[i]
-void add_c_dot( const scalar & c, const vectorfield & a, const vectorfield & b, scalarfield & out )
+void add_c_dot( scalar c, const vectorfield & a, const vectorfield & b, scalarfield & out )
 {
     int n = out.size();
     cu_add_c_dot<<<( n + 1023 ) / 1024, 1024>>>( c, a.data(), b.data(), out.data(), n );
@@ -657,7 +657,7 @@ __global__ void cu_set_c_dot( scalar c, Vector3 a, const Vector3 * b, scalar * o
     }
 }
 // out[i] = c * a*b[i]
-void set_c_dot( const scalar & c, const Vector3 & a, const vectorfield & b, scalarfield & out )
+void set_c_dot( scalar c, const Vector3 & a, const vectorfield & b, scalarfield & out )
 {
     int n = out.size();
     cu_set_c_dot<<<( n + 1023 ) / 1024, 1024>>>( c, a, b.data(), out.data(), n );
@@ -673,7 +673,7 @@ __global__ void cu_set_c_dot( scalar c, const Vector3 * a, const Vector3 * b, sc
     }
 }
 // out[i] = c * a[i]*b[i]
-void set_c_dot( const scalar & c, const vectorfield & a, const vectorfield & b, scalarfield & out )
+void set_c_dot( scalar c, const vectorfield & a, const vectorfield & b, scalarfield & out )
 {
     int n = out.size();
     cu_set_c_dot<<<( n + 1023 ) / 1024, 1024>>>( c, a.data(), b.data(), out.data(), n );
@@ -689,7 +689,7 @@ __global__ void cu_add_c_cross( scalar c, const Vector3 a, const Vector3 * b, Ve
         out[idx] += c * a.cross( b[idx] );
     }
 }
-void add_c_cross( const scalar & c, const Vector3 & a, const vectorfield & b, vectorfield & out )
+void add_c_cross( scalar c, const Vector3 & a, const vectorfield & b, vectorfield & out )
 {
     int n = out.size();
     cu_add_c_cross<<<( n + 1023 ) / 1024, 1024>>>( c, a, b.data(), out.data(), n );
@@ -705,7 +705,7 @@ __global__ void cu_add_c_cross( scalar c, const Vector3 * a, const Vector3 * b, 
         out[idx] += c * a[idx].cross( b[idx] );
     }
 }
-void add_c_cross( const scalar & c, const vectorfield & a, const vectorfield & b, vectorfield & out )
+void add_c_cross( scalar c, const vectorfield & a, const vectorfield & b, vectorfield & out )
 {
     int n = out.size();
     cu_add_c_cross<<<( n + 1023 ) / 1024, 1024>>>( c, a.data(), b.data(), out.data(), n );
@@ -737,7 +737,7 @@ __global__ void cu_set_c_cross( scalar c, const Vector3 a, const Vector3 * b, Ve
         out[idx] = c * a.cross( b[idx] );
     }
 }
-void set_c_cross( const scalar & c, const Vector3 & a, const vectorfield & b, vectorfield & out )
+void set_c_cross( scalar c, const Vector3 & a, const vectorfield & b, vectorfield & out )
 {
     int n = out.size();
     cu_set_c_cross<<<( n + 1023 ) / 1024, 1024>>>( c, a, b.data(), out.data(), n );
@@ -753,7 +753,7 @@ __global__ void cu_set_c_cross( scalar c, const Vector3 * a, const Vector3 * b, 
         out[idx] = c * a[idx].cross( b[idx] );
     }
 }
-void set_c_cross( const scalar & c, const vectorfield & a, const vectorfield & b, vectorfield & out )
+void set_c_cross( scalar c, const vectorfield & a, const vectorfield & b, vectorfield & out )
 {
     int n = out.size();
     cu_set_c_cross<<<( n + 1023 ) / 1024, 1024>>>( c, a.data(), b.data(), out.data(), n );
