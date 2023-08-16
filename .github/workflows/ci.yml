@@ -152,7 +152,7 @@ jobs:
       run: |
         sudo apt-get --purge remove "clang*"
         wget --no-verbose -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-        sudo add-apt-repository "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy main"
+        sudo add-apt-repository "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-17 main"
         sudo apt update
         sudo apt install xorg-dev libglu1-mesa-dev libgtk-3-dev clang-17 lldb-17 lld-17 libomp-17-dev
         sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-17 10
