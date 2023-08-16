@@ -125,16 +125,18 @@ void Tangents(
     std::vector<std::shared_ptr<vectorfield>> configurations, const std::vector<scalar> & energies,
     std::vector<vectorfield> & tangents );
 
-namespace
-{ // internal linkage
-
-[[nodiscard]] auto project_tangential_async( vectorfield_view vf1, const_vectorfield_view vf2 )
+// clang-format off
+[[nodiscard]]
+inline auto project_tangential_async( vectorfield_view vf1, const_vectorfield_view vf2 )
 {
-    return stdexec::bulk( range_size( vf1, vf2 ), [=]( std::size_t i ) { vf1[i] -= vf1[i].dot( vf2[i] ) * vf2[i]; } );
+    return 
+        stdexec::bulk( range_size( vf1, vf2 ), [=]( std::size_t i ) { 
+            vf1[i] -= vf1[i].dot( vf2[i] ) * vf2[i];
+        } );
 }
 
 // [[nodiscard]]
-// auto project_parallel_async( vectorfield_view vf1, const_vectorfield_view vf2 )
+// inline auto project_parallel_async( vectorfield_view vf1, const_vectorfield_view vf2 )
 // {
 //     return
 //         Vectormath::dot_async(vf1, vf2)
@@ -142,9 +144,9 @@ namespace
 //             vf1[i] = proj * vf2[i];
 //         });
 // }
-
+//
 // [[nodiscard]]
-// auto project_orthogonal_async( vectorfield_view vf1, const_vectorfield_view vf2 )
+// inline auto project_orthogonal_async( vectorfield_view vf1, const_vectorfield_view vf2 )
 // {
 //     return
 //         Vectormath::dot_async(vf1, vf2)
@@ -152,9 +154,9 @@ namespace
 //             vf1[i] -= proj * vf2[i];
 //         });
 // }
-
+//
 // [[nodiscard]]
-// auto invert_parallel_async( vectorfield_view vf1, const_vectorfield_view vf2 )
+// inline auto invert_parallel_async( vectorfield_view vf1, const_vectorfield_view vf2 )
 // {
 //     return
 //         Vectormath::dot_async(vf1, vf2)
@@ -162,9 +164,9 @@ namespace
 //             vf1[i] -= 2 * proj * vf2[i];
 //         });
 // }
-
+//
 // [[nodiscard]]
-// auto invert_orthogonal_async( vectorfield_view vf1, const_vectorfield_view vf2 )
+// inline auto invert_orthogonal_async( vectorfield_view vf1, const_vectorfield_view vf2 )
 // {
 //     return
 //         Vectormath::dot_async(vf1, vf2)
@@ -173,23 +175,21 @@ namespace
 //         });
 // }
 
+
 // [[nodiscard]]
 // auto dist_geodesic_async( const_vectorfield_view v1, const_vectorfield_view v2 )
 // {
 // TODO exec::reduce
-
 // return
 // |   stdexec::then([](scalar dist2){ return sqrt( dist2 ); });
-
 // scalar dist = 0;
 // #pragma omp parallel for reduction( + : dist )
 // for( unsigned int i = 0; i < v1.size(); ++i )
 //     dist += pow( Vectormath::angle( v1[i], v2[i] ), 2 );
 // return sqrt( dist );
-
 // }
 
-} // namespace
+// clang-format on
 
 } // namespace Manifoldmath
 } // namespace Engine

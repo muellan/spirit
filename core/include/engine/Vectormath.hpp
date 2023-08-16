@@ -207,8 +207,6 @@ void set_c_cross( scalar c, const Vector3 & a, const vectorfield & b, vectorfiel
 void set_c_cross( scalar c, const vectorfield & a, const vectorfield & b, vectorfield & out );
 
 // clang-format off
-namespace { // internal linkage
-
 // // computes the inner product of two vectorfields v1 and v2
 // [[nodiscard]]
 // auto dot_async( const_vectorfield_view v1, const_vectorfield_view v2 )
@@ -227,7 +225,7 @@ namespace { // internal linkage
 
 // computes the inner products of vectors in vf1 and vf2
 [[nodiscard]]
-auto dot_async( const_vectorfield_view vf1, const_vectorfield_view vf2, scalarfield_view out )
+inline auto dot_async( const_vectorfield_view vf1, const_vectorfield_view vf2, scalarfield_view out )
 {
     return 
         stdexec::bulk( range_size( vf1, vf2, out ), [=]( std::size_t i ) { 
@@ -237,7 +235,7 @@ auto dot_async( const_vectorfield_view vf1, const_vectorfield_view vf2, scalarfi
 
 // computes the product of scalars in s1 and s2
 [[nodiscard]]
-auto dot_async( const_scalarfield_view s1, const_scalarfield_view s2, scalarfield_view out )
+inline auto dot_async( const_scalarfield_view s1, const_scalarfield_view s2, scalarfield_view out )
 {
     return 
         stdexec::bulk( range_size( s1, s2, out ), [=]( std::size_t i ) {
@@ -245,7 +243,6 @@ auto dot_async( const_scalarfield_view s1, const_scalarfield_view s2, scalarfiel
         } );
 }
 
-} // namespace
 // clang-format on
 
 } // namespace Vectormath

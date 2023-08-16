@@ -92,6 +92,24 @@ auto copy_async (std::span<const InValue> in, std::span<OutValue> out)
 
 
 //-----------------------------------------------------------------------------
+/// @brief fully synchronous 'bulk' variant
+template <class Body>
+requires
+    std::copy_constructible<Body> &&
+    std::invocable<Body,std::size_t>
+void for_each_index (Context ctx, std::size_t size, Body&& body)
+{
+    auto task = 
+        stdexec::schedule(ctx.get_scheduler())
+    |   stdexec::bulk(size, (Body&&)body);
+
+    stdexec::sync_wait(std::move(task)).value();
+}
+
+
+
+
+//-----------------------------------------------------------------------------
 template <class InRange, class Body>
 requires 
     std::ranges::random_access_range<InRange> &&
