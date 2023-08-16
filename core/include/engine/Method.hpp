@@ -5,9 +5,9 @@
 #include <Spirit/Spirit_Defines.h>
 #include <data/Parameters_Method.hpp>
 #include <data/Spin_System_Chain.hpp>
+#include <utility/Execution.hpp>
 #include <utility/Logging.hpp>
 #include <utility/Timing.hpp>
-#include <utility/Execution.hpp>
 
 #include <deque>
 #include <fstream>

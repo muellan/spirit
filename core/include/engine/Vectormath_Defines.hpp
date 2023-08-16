@@ -7,8 +7,8 @@
 
 #include <array>
 #include <complex>
-#include <vector>
 #include <span>
+#include <vector>
 
 // Dynamic Eigen typedefs
 using VectorX    = Eigen::Matrix<scalar, -1, 1>;

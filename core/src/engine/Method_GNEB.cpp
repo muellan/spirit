@@ -8,8 +8,8 @@
 #include <io/OVF_File.hpp>
 #include <utility/Cubic_Hermite_Spline.hpp>
 #include <utility/Logging.hpp>
-#include <utility/Version.hpp>
 #include <utility/Stdexec_Algorithms.hpp>
+#include <utility/Version.hpp>
 
 #include <fmt/format.h>
 #include <Eigen/Geometry>
@@ -24,12 +24,8 @@ namespace Engine
 
 template<Solver solver>
 Method_GNEB<solver>::Method_GNEB(
-    Execution::Context exec_ctx,
-    std::shared_ptr<Data::Spin_System_Chain> chain,
-    int idx_chain )
-: 
-    Method_Solver<solver>( exec_ctx, chain->gneb_parameters, -1, idx_chain ),
-    chain( chain )
+    Execution::Context exec_ctx, std::shared_ptr<Data::Spin_System_Chain> chain, int idx_chain )
+        : Method_Solver<solver>( exec_ctx, chain->gneb_parameters, -1, idx_chain ), chain( chain )
 {
     this->systems    = chain->images;
     this->SenderName = Utility::Log_Sender::GNEB;
@@ -380,25 +376,23 @@ void Method_GNEB<solver>::Calculate_Force_Virtual(
             continue;
         }
 
-        auto image         = view_of(*configurations[i]);
-        auto force         = view_of(forces[i]);
-        auto force_virtual = view_of(forces_virtual[i]);
+        auto image         = view_of( *configurations[i] );
+        auto force         = view_of( forces[i] );
+        auto force_virtual = view_of( forces_virtual[i] );
         auto & parameters  = *this->systems[i]->llg_parameters;
 
         // dt = time_step [ps] * gyromagnetic ratio / mu_B / (1+damping^2) <- not implemented
         scalar dtg = parameters.dt * Constants::gamma / Constants::mu_B;
 
-        generate_indexed(exec_context, force_virtual, [=](std::size_t i) { 
-            return Vector3{ dtg * image[i].cross( force[i] ) };
-        });
+        generate_indexed(
+            exec_context, force_virtual, [=]( std::size_t i ) { return Vector3{ dtg * image[i].cross( force[i] ) }; } );
 
 // TODO: add Temperature effects!
 
 // Apply Pinning
 #ifdef SPIRIT_ENABLE_PINNING
-        auto mask = view_of(chain->images[i]->geometry->mask_unpinned);
-        generate_indexed(exec_context, force_virtual,
-        [=](std::size_t i) { return mask[i] * force_virtual[i]; });
+        auto mask = view_of( chain->images[i]->geometry->mask_unpinned );
+        generate_indexed( exec_context, force_virtual, [=]( std::size_t i ) { return mask[i] * force_virtual[i]; } );
 #endif // SPIRIT_ENABLE_PINNING
     }
 }

@@ -9,17 +9,16 @@
 // #include <fmt/format.h>
 
 #ifdef _OPENMP
-    #include <omp.h>
+#include <omp.h>
 #endif
 
 // #include <execution>
-#include <utility>
-#include <concepts>
-#include <ranges>
 #include <algorithm>
-#include <span>
+#include <concepts>
 #include <numeric>
-
+#include <ranges>
+#include <span>
+#include <utility>
 
 // clang-format off
 namespace Execution {
@@ -336,7 +335,6 @@ auto reduce_async (Result init, ReductionOp&& redOp)
     return exec::reduce(init, (ReductionOp&&)redOp);
 }
 
-
 #else
 
 
@@ -354,7 +352,6 @@ auto reduce_async (Result init, ReductionOp&& redOp)
 {
     return nvexec::reduce(init, (ReductionOp&&)redOp);
 }
-
 
 #endif
 

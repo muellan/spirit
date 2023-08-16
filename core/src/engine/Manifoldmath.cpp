@@ -36,8 +36,6 @@ void project_parallel( vectorfield & vf1, const vectorfield & vf2 )
 //     stdexec::sync_wait(std::move(task)).value();
 // }
 
-
-
 void project_orthogonal( vectorfield & vf1, const vectorfield & vf2 )
 {
     const scalar x = Vectormath::dot( vf1, vf2 );
@@ -46,7 +44,7 @@ void project_orthogonal( vectorfield & vf1, const vectorfield & vf2 )
         vf1[i] -= x * vf2[i];
 }
 
-// void project_orthogonal( 
+// void project_orthogonal(
 //     Execution::Context ctx, vectorfield_view vf1, const_vectorfield_view vf2 )
 // {
 //     auto task =
@@ -56,8 +54,6 @@ void project_orthogonal( vectorfield & vf1, const vectorfield & vf2 )
 //     stdexec::sync_wait(std::move(task)).value();
 // }
 
-
-
 void invert_parallel( vectorfield & vf1, const vectorfield & vf2 )
 {
     const scalar x = Vectormath::dot( vf1, vf2 );
@@ -66,7 +62,7 @@ void invert_parallel( vectorfield & vf1, const vectorfield & vf2 )
         vf1[i] -= 2 * x * vf2[i];
 }
 
-// void invert_parallel( 
+// void invert_parallel(
 //     Execution::Context ctx, vectorfield_view vf1, const_vectorfield_view vf2 )
 // {
 //     auto task =
@@ -75,8 +71,6 @@ void invert_parallel( vectorfield & vf1, const vectorfield & vf2 )
 //
 //     stdexec::sync_wait(std::move(task)).value();
 // }
-
-
 
 void invert_orthogonal( vectorfield & vf1, const vectorfield & vf2 )
 {
@@ -87,7 +81,7 @@ void invert_orthogonal( vectorfield & vf1, const vectorfield & vf2 )
         vf1[i] -= 2 * vf3[i];
 }
 
-// void invert_orthogonal( 
+// void invert_orthogonal(
 //     Execution::Context ctx, vectorfield_view vf1, const_vectorfield_view vf2 )
 // {
 //     auto task =
@@ -97,8 +91,6 @@ void invert_orthogonal( vectorfield & vf1, const vectorfield & vf2 )
 //     stdexec::sync_wait(std::move(task)).value();
 // }
 
-
-
 void project_tangential( vectorfield & vf1, const vectorfield & vf2 )
 {
 #pragma omp parallel for
@@ -106,17 +98,12 @@ void project_tangential( vectorfield & vf1, const vectorfield & vf2 )
         vf1[i] -= vf1[i].dot( vf2[i] ) * vf2[i];
 }
 
-void project_tangential(
-    Execution::Context ctx, vectorfield & vf1, const vectorfield & vf2 )
+void project_tangential( Execution::Context ctx, vectorfield & vf1, const vectorfield & vf2 )
 {
-    auto task =
-        stdexec::schedule(ctx.get_scheduler())
-    |   project_tangential_async(view_of(vf1), view_of(vf2));
+    auto task = stdexec::schedule( ctx.get_scheduler() ) | project_tangential_async( view_of( vf1 ), view_of( vf2 ) );
 
-    stdexec::sync_wait(std::move(task)).value();
+    stdexec::sync_wait( std::move( task ) ).value();
 }
-
-
 
 scalar dist_geodesic( const vectorfield & vf1, const vectorfield & vf2 )
 {
@@ -138,8 +125,6 @@ scalar dist_geodesic( const vectorfield & vf1, const vectorfield & vf2 )
 //
 //     return sqrt( dist2 );
 // }
-
-
 
 /*
     Helper function for a more accurate tangent

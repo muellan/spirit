@@ -2,12 +2,10 @@
 #ifndef SPIRIT_CORE_UTILITY_EXECUTION_DEFS_HPP
 #define SPIRIT_CORE_UTILITY_EXECUTION_DEFS_HPP
 
-
 #ifdef SPIRIT_USE_CUDA
 #define HOSTDEVICEQUALIFIER __host__ __device__
 #else
 #define HOSTDEVICEQUALIFIER
 #endif
-
 
 #endif

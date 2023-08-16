@@ -475,9 +475,8 @@ scalar solid_angle_2( const Vector3 & v1, const Vector3 & v2, const Vector3 & v3
 
 void rotate( const Vector3 & v, const Vector3 & axis, scalar angle, Vector3 & v_out )
 {
-    const auto ca = std::cos(angle);
-    v_out = v * ca + axis.cross( v ) * std::sin( angle )
-          + axis * axis.dot( v ) * ( 1 - ca );
+    const auto ca = std::cos( angle );
+    v_out         = v * ca + axis.cross( v ) * std::sin( angle ) + axis * axis.dot( v ) * ( 1 - ca );
 }
 
 // XXX: should we add test for that function since it's calling the already tested rotat()
@@ -773,14 +772,13 @@ void directional_gradient(
     }
 }
 
-
 HOSTDEVICEQUALIFIER
 int linear_index(
-    const int ib, int a, int b, int c,
-    const int n_cell_atoms, const int n_cells[3], const int bc[3],
+    const int ib, int a, int b, int c, const int n_cell_atoms, const int n_cells[3], const int bc[3],
     const bool disable_checks = false )
 {
-    if( !disable_checks ) {
+    if( !disable_checks )
+    {
         const bool valid_basis = ib >= 0 && ib < n_cell_atoms;
         if( !valid_basis )
         {
@@ -790,9 +788,12 @@ int linear_index(
         const bool valid_a = a >= 0 && a < n_cells[0];
         if( !valid_a )
         {
-            if( bc[0] != 0 ) {
+            if( bc[0] != 0 )
+            {
                 a = ( n_cells[0] + ( a % n_cells[0] ) ) % n_cells[0];
-            } else {
+            }
+            else
+            {
                 return -1;
             }
         }
@@ -800,9 +801,12 @@ int linear_index(
         const bool valid_b = b >= 0 && b < n_cells[1];
         if( !valid_b )
         {
-            if( bc[1] != 0 ) {
+            if( bc[1] != 0 )
+            {
                 b = ( n_cells[1] + ( b % n_cells[1] ) ) % n_cells[1];
-            } else {
+            }
+            else
+            {
                 return -1;
             }
         }
@@ -810,9 +814,12 @@ int linear_index(
         const bool valid_c = c >= 0 && c < n_cells[2];
         if( !valid_c )
         {
-            if( bc[2] != 0 ) {
+            if( bc[2] != 0 )
+            {
                 c = ( n_cells[2] + ( c % n_cells[2] ) ) % n_cells[2];
-            } else {
+            }
+            else
+            {
                 return -1;
             }
         }
@@ -820,20 +827,16 @@ int linear_index(
     return ib + n_cell_atoms * ( a + n_cells[0] * ( b + n_cells[1] * c ) );
 }
 
-
-void jacobian (
-    Execution::Context exec_context,
-    const_vectorfield_view vf,
-    const Data::Geometry & geometry,
-    const intfield & boundary_conditions,
-    matrixfield_view jacobian )
+void jacobian(
+    Execution::Context exec_context, const_vectorfield_view vf, const Data::Geometry & geometry,
+    const intfield & boundary_conditions, matrixfield_view jacobian )
 {
-    const int ncells[3]        { geometry.n_cells[0], geometry.n_cells[1], geometry.n_cells[2] };
-    const int boundary_cond[3] { boundary_conditions[0], boundary_conditions[1], boundary_conditions[2] };
+    const int ncells[3]{ geometry.n_cells[0], geometry.n_cells[1], geometry.n_cells[2] };
+    const int boundary_cond[3]{ boundary_conditions[0], boundary_conditions[1], boundary_conditions[2] };
 
     // 1.) Choose three linearly independent base vectors, which result from lattice translations
     // TODO: depending on the basis, the bravais vectors might not be the best choice
-    const int translations[3][3] {{1,0,0},{0,1,0},{0,0,1}};
+    const int translations[3][3]{ { 1, 0, 0 }, { 0, 1, 0 }, { 0, 0, 1 } };
 
     const Vector3 base_1 = geometry.lattice_constant * geometry.bravais_vectors[0];
     const Vector3 base_2 = geometry.lattice_constant * geometry.bravais_vectors[1];
@@ -850,45 +853,50 @@ void jacobian (
 
     // 4.) Loop over spins
     // note: indices change most frequently from left to right
-    const auto n_atoms = geometry.n_cell_atoms;
-    const auto& n_cells = geometry.n_cells;
+    const auto n_atoms   = geometry.n_cell_atoms;
+    const auto & n_cells = geometry.n_cells;
 
-    for_each_grid_index(exec_context,
-        std::array{n_atoms, n_cells[0], n_cells[1], n_cells[2]},
-        [=,m_matrix = Matrix3{}] (auto const& idx) mutable
+    for_each_grid_index(
+        exec_context, std::array{ n_atoms, n_cells[0], n_cells[1], n_cells[2] },
+        [=, m_matrix = Matrix3{}]( auto const & idx ) mutable
         {
-            const auto [ib,a,b,c] = idx;
+            const auto [ib, a, b, c] = idx;
 
             const auto idx_cur = linear_index( ib, a, b, c, n_atoms, ncells, boundary_cond, true );
 
-            for( int trans_idx = 0; trans_idx < 3; trans_idx++ ) {
-                const auto& trans = translations[trans_idx];
+            for( int trans_idx = 0; trans_idx < 3; trans_idx++ )
+            {
+                const auto & trans = translations[trans_idx];
 
                 // apply translations in positive direction
-                const auto idx0 = linear_index(
-                    ib, a + trans[0], b + trans[1], c + trans[2], n_atoms, ncells,
-                    boundary_cond );
+                const auto idx0
+                    = linear_index( ib, a + trans[0], b + trans[1], c + trans[2], n_atoms, ncells, boundary_cond );
 
                 // apply translations in negative direction
-                const auto idx1 = linear_index(
-                    ib, a - trans[0], b - trans[1], c - trans[2], n_atoms, ncells,
-                    boundary_cond );
+                const auto idx1
+                    = linear_index( ib, a - trans[0], b - trans[1], c - trans[2], n_atoms, ncells, boundary_cond );
 
                 Vector3 m0 = { 0, 0, 0 };
                 Vector3 m1 = { 0, 0, 0 };
 
                 scalar factor = 0.5; // Factor 0.5 for central finite differences
                                      //
-                if( idx0 >= 0 ) {
+                if( idx0 >= 0 )
+                {
                     m0 = vf[idx0];
-                } else {
+                }
+                else
+                {
                     m0 = vf[idx_cur];
                     factor *= 2; // Increase factor because now only backward difference
                 }
 
-                if( idx1 >= 0 ) {
+                if( idx1 >= 0 )
+                {
                     m1 = vf[idx1];
-                } else {
+                }
+                else
+                {
                     m1 = vf[idx_cur];
                     factor *= 2; // Increase factor because now only forward difference
                 }
@@ -898,7 +906,7 @@ void jacobian (
             }
 
             jacobian[idx_cur] = m_matrix * inverse_base_matrix;
-        });
+        } );
 }
 
 } // namespace Vectormath
