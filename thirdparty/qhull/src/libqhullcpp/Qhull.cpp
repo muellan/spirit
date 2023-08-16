@@ -92,7 +92,7 @@ allocateQhullQh()
 }//allocateQhullQh
 
 Qhull::
-~Qhull() throw()
+~Qhull() noexcept
 {
     // Except for cerr, does not throw errors
     if(qh_qh->hasQhullMessage()){

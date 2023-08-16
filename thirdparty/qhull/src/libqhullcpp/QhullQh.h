@@ -94,7 +94,7 @@ public:
     bool                hasOutputStream() const { return use_output_stream; }
     bool                hasQhullMessage() const;
     void                maybeThrowQhullMessage(int exitCode);
-    void                maybeThrowQhullMessage(int exitCode, int noThrow) throw();
+    void                maybeThrowQhullMessage(int exitCode, int noThrow) noexcept;
     int                 qhullStatus() const;
     void                setErrorStream(std::ostream *os);
     void                setOutputStream(std::ostream *os);

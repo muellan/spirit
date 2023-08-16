@@ -58,7 +58,7 @@ public:
     RoadError(int code, const char *fmt, int d, int d2, float f, double e);
 
     RoadError &         operator=(const RoadError &other);
-                        ~RoadError() throw() {}
+                        ~RoadError() noexcept {}
 
 #//!\name Class methods
 
@@ -67,7 +67,7 @@ public:
     static std::string  stringGlobalLog() { return global_log.str(); }
 
 #//!\name Virtual
-    virtual const char *what() const throw();
+    virtual const char *what() const noexcept;
 
 #//!\name GetSet
     bool                isValid() const { return log_event.isValid(); }
