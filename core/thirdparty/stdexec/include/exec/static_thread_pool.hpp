@@ -30,6 +30,7 @@
 #include <thread>
 #include <type_traits>
 #include <vector>
+#include <ranges>
 
 namespace exec {
   using stdexec::__intrusive_queue;
