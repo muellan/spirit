@@ -110,11 +110,13 @@ using neighbourfield  = field<Neighbour>;
 using vector2field    = field<Vector2>;
 
 // Non-owning views to fields
-using scalarfield_view = std::span<scalar>;
-using vectorfield_view = std::span<Vector3>;
-using matrixfield_view = std::span<Matrix3>;
+using scalarfield_view  = std::span<scalar>;
+using vectorfield_view  = std::span<Vector3>;
+using vector2field_view = std::span<Vector2>;
+using matrixfield_view  = std::span<Matrix3>;
 
 // Non-owning const views to fields
-using const_scalarfield_view = std::span<const scalar>;
-using const_vectorfield_view = std::span<const Vector3>;
-using const_matrixfield_view = std::span<const Matrix3>;
+using const_scalarfield_view  = std::span<const scalar>;
+using const_vectorfield_view  = std::span<const Vector3>;
+using const_vector2field_view = std::span<const Vector2>;
+using const_matrixfield_view  = std::span<const Matrix3>;

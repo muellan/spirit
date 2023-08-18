@@ -46,14 +46,13 @@ inline void Method_Solver<Solver::Heun>::Iteration()
         auto conf_temp      = view_of( *this->configurations_temp[img] );
         auto conf_predictor = view_of( *this->configurations_predictor[img] );
 
-        generate_indexed(
-            exec_context, conf_predictor,
+        for_each_index(
+            exec_context, conf.size(),
             [=]( std::size_t i )
             {
-                conf_temp[i] = -1 * conf[i].cross( vforces[i] );
-                Vector3 s{ conf[i] + conf_temp[i] };
-                s.normalize();
-                return s;
+                conf_temp[i]      = -1 * conf[i].cross( vforces[i] );
+                conf_predictor[i] = conf[i] + conf_temp[i];
+                conf_predictor[i].normalize();
             } );
     }
 
@@ -67,17 +66,16 @@ inline void Method_Solver<Solver::Heun>::Iteration()
     {
         auto conf_predictor    = const_view_of( *this->configurations_predictor[img] );
         auto vforces_predictor = const_view_of( forces_virtual_predictor[img] );
-        auto conf_temp         = view_of( *this->configurations_temp[img] );
+        auto conf_temp         = const_view_of( *this->configurations_temp[img] );
         auto conf              = view_of( *this->configurations[img] );
 
         // Second step - Corrector
-        generate_indexed(
-            exec_context, conf,
+        for_each_index(
+            exec_context, conf.size(),
             [=]( std::size_t i )
             {
-                conf_temp[i] = conf[i] + 0.5 * conf_temp[i] - 0.5 * conf_predictor[i].cross( vforces_predictor[i] );
-                conf_temp[i].normalize();
-                return conf_temp[i];
+                conf[i] = conf[i] + 0.5 * conf_temp[i] - 0.5 * conf_predictor[i].cross( vforces_predictor[i] );
+                conf[i].normalize();
             } );
     }
 }
