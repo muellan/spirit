@@ -6,7 +6,7 @@
 #include <utility/Indices.hpp>
 #include <utility/View.hpp>
 
-// #include <fmt/format.h>
+#include <exec/variant_sender.hpp>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -115,12 +115,11 @@ requires
     std::ranges::sized_range<InRange> &&
     std::copy_constructible<Body> &&
     std::invocable<Body,std::ranges::range_value_t<InRange>>
-[[nodiscard]] stdexec::sender
-auto for_each_async (Context ctx, InRange&& input, Body body)
+[[nodiscard]]
+auto for_each_async (InRange&& input, Body body)
 {
     return
-        stdexec::transfer_just(ctx.get_scheduler(), view_of((InRange&&)input)) 
-    |   stdexec::bulk(std::ranges::size(input),
+        stdexec::bulk(std::ranges::size(input),
             [=](std::size_t idx, auto in) {
                 body(in[idx]);
             })
@@ -137,7 +136,10 @@ requires
     std::invocable<Body,std::ranges::range_value_t<InRange>>
 void for_each (Context ctx, InRange&& input, Body&& body)
 {
-    auto task = for_each_async(ctx, (InRange&&)input, (Body&&)body); 
+    auto task = 
+        stdexec::transfer_just(ctx.get_scheduler(), view_of((InRange&&)input)) 
+    |   for_each_async((InRange&&)input, (Body&&)body); 
+
     stdexec::sync_wait(std::move(task)).value();
 }
 
@@ -148,20 +150,20 @@ void for_each (Context ctx, InRange&& input, Body&& body)
 template <class GridExtents, class Body>
 requires 
     std::copy_constructible<Body>
-void for_each_grid_index (Context ctx, GridExtents ext, Body body)
+[[nodiscard]]
+auto for_each_grid_index_async (GridExtents ext, std::size_t tileCount, Body body)
 {
     // size of collapsed index range
     std::size_t size = 1;
     for (auto x : ext) { size *= static_cast<std::size_t>(x); }
     
+    tileCount = std::min(size, tileCount);
+
     auto const N = static_cast<int>(ext.size());
-    auto const tileCount = std::min(size, static_cast<std::size_t>(ctx.resource_shape().threads));
     auto const tileSize  = static_cast<std::size_t>((size + tileCount - 1) / tileCount);
 
-    auto sched = ctx.get_scheduler();
-
-    auto task = stdexec::schedule(sched) 
-    |   stdexec::bulk(tileCount, [=](std::size_t tileIdx) mutable
+    return 
+        stdexec::bulk(tileCount, [=](std::size_t tileIdx) mutable
         {
             // start/end of collapsed index range
             auto const start = tileIdx * tileSize;
@@ -197,6 +199,20 @@ void for_each_grid_index (Context ctx, GridExtents ext, Body body)
                 }
             }
         });
+}
+
+
+
+
+//-----------------------------------------------------------------------------
+template <class GridExtents, class Body>
+requires 
+    std::copy_constructible<Body>
+void for_each_grid_index (Context ctx, GridExtents ext, Body&& body)
+{
+    auto task = 
+        stdexec::schedule(ctx.get_scheduler()) 
+    |   for_each_grid_index_async(ext, ctx.resource_shape().threads, (Body&&)body);
 
     stdexec::sync_wait(task).value();
 }
@@ -209,13 +225,11 @@ template <class OutRange, class Generator>
 requires std::ranges::random_access_range<OutRange> &&
          std::ranges::sized_range<OutRange> &&
          IndexToValueMapping<Generator,OutRange>
-[[nodiscard]] stdexec::sender
-auto generate_indexed_async (
-    Context ctx, OutRange & output, Generator gen)
+[[nodiscard]]
+auto generate_indexed_async (OutRange & output, Generator gen)
 {
     return
-        stdexec::transfer_just(ctx.get_scheduler(), view_of(output))
-    |   stdexec::bulk(std::ranges::size(output),
+        stdexec::bulk(std::ranges::size(output),
             [=](auto idx, auto out) {
                 out[idx] = gen(idx);
             })
@@ -230,7 +244,10 @@ requires std::ranges::random_access_range<OutRange> &&
          IndexToValueMapping<Generator,OutRange>
 void generate_indexed (Context ctx, OutRange & output, Generator&& gen)
 {
-    auto task = generate_indexed_async(ctx, output, (Generator&&)(gen));
+    auto task = 
+        stdexec::transfer_just(ctx.get_scheduler(), view_of(output))
+    |   generate_indexed_async(output, (Generator&&)(gen));
+
     stdexec::sync_wait(std::move(task)).value();
 }
 
@@ -244,14 +261,11 @@ requires std::ranges::random_access_range<InRange> &&
          std::ranges::random_access_range<OutRange> &&
          std::ranges::sized_range<OutRange> &&
          std::copy_constructible<Transf>
-[[nodiscard]] stdexec::sender
-auto transform_async (
-    Context ctx, InRange const& input, OutRange & output, Transf fn)
+[[nodiscard]]
+auto transform_async (InRange const& input, OutRange & output, Transf fn)
 {
     return
-        stdexec::transfer_just(ctx.get_scheduler(), 
-                               view_of(input), view_of(output) )
-    |   stdexec::bulk(std::ranges::size(input),
+        stdexec::bulk(std::ranges::size(input),
             [=](std::size_t idx, auto in, auto out) {
                 out[idx] = fn(in[idx]);
             })
@@ -269,7 +283,11 @@ requires std::ranges::random_access_range<InRange> &&
 void transform (
     Context ctx, InRange const& input, OutRange & output, Transf&& fn)
 {
-    auto task = transform_async(ctx, input, output, (Transf&&)(fn)); 
+    auto task = 
+        stdexec::transfer_just(ctx.get_scheduler(), 
+                               view_of(input), view_of(output) )
+    |   transform_async(input, output, (Transf&&)(fn)); 
+
     stdexec::sync_wait(std::move(task)).value();
 }
 
@@ -283,7 +301,28 @@ requires std::ranges::random_access_range<InRange> &&
          std::ranges::random_access_range<OutRange> &&
          std::ranges::sized_range<OutRange> &&
          std::copy_constructible<Transf>
-[[nodiscard]] stdexec::sender
+[[nodiscard]]
+auto transform_indexed_async (
+    InRange const& input, OutRange & output, Transf fn)
+{
+    return
+        stdexec::bulk(std::ranges::size(input),
+            [=](auto idx, auto in, auto out) {
+                out[idx] = fn(idx, in[idx]);
+            })
+    |   stdexec::then([](auto out){ return out; });
+
+}
+
+
+//-----------------------------------------------------------------------------
+template <class InRange, class OutRange, class Transf>
+requires std::ranges::random_access_range<InRange> &&
+         std::ranges::sized_range<InRange> &&
+         std::ranges::random_access_range<OutRange> &&
+         std::ranges::sized_range<OutRange> &&
+         std::copy_constructible<Transf>
+[[nodiscard]]
 auto transform_indexed_async (
     Context ctx, InRange const& input, OutRange & output, Transf fn)
 {
@@ -311,6 +350,42 @@ void transform_indexed (
 {
     auto task = transform_indexed_async(ctx, input, output, (Transf&&)(fn));
     stdexec::sync_wait(std::move(task)).value();
+}
+
+
+
+
+//-----------------------------------------------------------------------------
+template <class Fun, class... Args>
+concept Predicate =
+    std::invocable<Fun, Args...> &&
+    std::same_as<std::invoke_result_t<Fun, Args...>, bool>;
+
+template <class... Ts>
+using just_sender_t = decltype(stdexec::just(std::declval<Ts>()...));
+
+template <
+    class Pred,
+    stdexec::__sender_adaptor_closure Then,
+    stdexec::__sender_adaptor_closure Else
+>
+auto if_then_else (Pred pred, Then then_, Else else_)
+{
+    return stdexec::let_value(
+        [=]<class... Args>(Args&&... args) mutable
+            -> exec::variant_sender<
+                std::invoke_result_t<Then, just_sender_t<Args...>>,
+                std::invoke_result_t<Else, just_sender_t<Args...>>>
+            requires Predicate<Pred, Args&...>
+        {
+            if (pred(args...)) {
+                return std::move(then_)(stdexec::just((Args&&)args...));
+            }
+            else {
+                return std::move(else_)(stdexec::just((Args&&)args...));
+            }
+        }
+    );
 }
 
 
