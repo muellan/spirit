@@ -75,7 +75,7 @@ set( CMAKE_EXPORT_COMPILE_COMMANDS ON )
 ####################################################################
 
 
-######### Deactivate warning generate by third party library #######
+######### Deactivate warning generate by third party libraries #######
 if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
     # generated in C++17 / C++20 mode
     # due to QHull
@@ -88,7 +88,8 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
     set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-incompatible-vectors-conversion" )
     # due to Imgui
     set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-format-overflow" )
-else()
+elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "NVHPC")
+else ()
     # due to stdexec
     set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-gnu-string-literal-operator-template" )
 endif()
