@@ -102,25 +102,25 @@ public:
         [[nodiscard]] HOSTDEVICEQUALIFIER constexpr friend iterator
         operator+( iterator const & it, difference_type idx ) noexcept
         {
-            return iterator{ static_cast<value_type>(it.i_ + idx) };
+            return iterator{ static_cast<value_type>( it.i_ + idx ) };
         }
 
         [[nodiscard]] HOSTDEVICEQUALIFIER constexpr friend iterator
         operator+( difference_type idx, iterator const & it ) noexcept
         {
-            return iterator{ static_cast<value_type>(it.i_ + idx) };
+            return iterator{ static_cast<value_type>( it.i_ + idx ) };
         }
 
         [[nodiscard]] HOSTDEVICEQUALIFIER constexpr friend iterator
         operator-( iterator const & it, difference_type idx ) noexcept
         {
-            return iterator{ static_cast<value_type>(it.i_ - idx) };
+            return iterator{ static_cast<value_type>( it.i_ - idx ) };
         }
 
         [[nodiscard]] HOSTDEVICEQUALIFIER constexpr friend iterator
         operator-( difference_type idx, iterator const & it ) noexcept
         {
-            return iterator{ static_cast<value_type>(it.i_ - idx) };
+            return iterator{ static_cast<value_type>( it.i_ - idx ) };
         }
 
         [[nodiscard]] HOSTDEVICEQUALIFIER friend constexpr difference_type
