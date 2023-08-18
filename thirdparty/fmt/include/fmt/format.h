@@ -4148,30 +4148,30 @@ extern template FMT_API auto decimal_point_impl(locale_ref) -> wchar_t;
 
 FMT_END_DETAIL_NAMESPACE
 
-#if FMT_USE_USER_DEFINED_LITERALS
-inline namespace literals {
-/**
-  \rst
-  User-defined literal equivalent of :func:`fmt::arg`.
-
-  **Example**::
-
-    using namespace fmt::literals;
-    fmt::print("Elapsed time: {s:.2f} seconds", "s"_a=1.23);
-  \endrst
- */
-#  if FMT_USE_NONTYPE_TEMPLATE_ARGS
-template <detail_exported::fixed_string Str> constexpr auto operator""_a() {
-  using char_t = remove_cvref_t<decltype(Str.data[0])>;
-  return detail::udl_arg<char_t, sizeof(Str.data) / sizeof(char_t), Str>();
-}
-#  else
-constexpr auto operator"" _a(const char* s, size_t) -> detail::udl_arg<char> {
-  return {s};
-}
-#  endif
-}  // namespace literals
-#endif  // FMT_USE_USER_DEFINED_LITERALS
+// #if FMT_USE_USER_DEFINED_LITERALS
+// inline namespace literals {
+// /**
+//   \rst
+//   User-defined literal equivalent of :func:`fmt::arg`.
+//
+//   **Example**::
+//
+//     using namespace fmt::literals;
+//     fmt::print("Elapsed time: {s:.2f} seconds", "s"_a=1.23);
+//   \endrst
+//  */
+// #  if FMT_USE_NONTYPE_TEMPLATE_ARGS
+// template <detail_exported::fixed_string Str> constexpr auto operator""_a() {
+//   using char_t = remove_cvref_t<decltype(Str.data[0])>;
+//   return detail::udl_arg<char_t, sizeof(Str.data) / sizeof(char_t), Str>();
+// }
+// #  else
+// constexpr auto operator"" _a(const char* s, size_t) -> detail::udl_arg<char> {
+//   return {s};
+// }
+// #  endif
+// }  // namespace literals
+// #endif  // FMT_USE_USER_DEFINED_LITERALS
 
 template <typename Locale, FMT_ENABLE_IF(detail::is_locale<Locale>::value)>
 inline auto vformat(const Locale& loc, string_view fmt, format_args args)
