@@ -33,23 +33,25 @@ inline void Method_Solver<Solver::VP_OSO>::Initialize()
 template<>
 inline void Method_Solver<Solver::VP_OSO>::Iteration()
 {
+    using namespace Execution;
+
     scalar projection_full  = 0;
     scalar force_norm2_full = 0;
 
     // Set previous
     for( int img = 0; img < noi; ++img )
     {
-        auto g    = grad[img].data();
-        auto g_pr = grad_pr[img].data();
-        auto v    = velocities[img].data();
-        auto v_pr = velocities_previous[img].data();
+        auto g    = const_view_of( grad[img] );
+        auto v    = const_view_of( velocities[img] );
+        auto g_pr = view_of( grad_pr[img] );
+        auto v_pr = view_of( velocities_previous[img] );
 
-        Backend::par::apply(
-            nos,
-            [g, g_pr, v, v_pr] SPIRIT_LAMBDA( int idx )
+        for_each_index(
+            exec_context, nos,
+            [=]( std::size_t i )
             {
-                g_pr[idx] = g[idx];
-                v_pr[idx] = v[idx];
+                g_pr[i] = g[i];
+                v_pr[i] = v[i];
             } );
     }
 
@@ -59,58 +61,83 @@ inline void Method_Solver<Solver::VP_OSO>::Iteration()
 
     for( int img = 0; img < this->noi; img++ )
     {
-        auto & image = *this->configurations[img];
-        auto & grad  = this->grad[img];
-        Solver_Kernels::oso_calc_gradients( grad, image, this->forces[img] );
-        Vectormath::scale( grad, -1.0 );
+        auto image  = const_view_of( *this->configurations[img] );
+        auto forces = const_view_of( this->forces[img] );
+        auto grad   = view_of( this->grad[img] );
+
+        auto task = schedule(exec_context)
+        |   Solver_Kernels::oso_calc_gradients_async( grad, image, forces )
+        |   stdexec::bulk(grad.size(), [=](std::size_t i){
+                grad[i] *= -1.0;
+            });
+
+        stdexec::sync_wait(std::move(task)).value();
     }
 
     for( int img = 0; img < noi; ++img )
     {
-        auto & velocity = velocities[img];
-        auto g          = this->grad[img].data();
-        auto g_pr       = this->grad_pr[img].data();
-        auto v          = velocities[img].data();
+        auto g          = const_view_of( this->grad[img] );
+        auto g_pr       = const_view_of( this->grad_pr[img] );
+        auto v          = view_of( velocities[img] );
         auto m_temp     = this->m;
 
         // Calculate the new velocity
-        Backend::par::apply(
-            nos, [g, g_pr, v, m_temp] SPIRIT_LAMBDA( int idx ) { v[idx] += 0.5 / m_temp * ( g_pr[idx] + g[idx] ); } );
+        for_each_index( exec_context, nos, [=]( std::size_t i ) { v[i] += 0.5 / m_temp * ( g_pr[i] + g[i] ); } );
 
         // Get the projection of the velocity on the force
-        projection[img]  = Vectormath::dot( velocity, this->grad[img] );
+        // TODO integrate into one stdexec workflow
+        projection[img]  = Vectormath::dot( velocities[img], this->grad[img] );
         force_norm2[img] = Vectormath::dot( this->grad[img], this->grad[img] );
     }
+
     for( int img = 0; img < noi; ++img )
     {
         projection_full += projection[img];
         force_norm2_full += force_norm2[img];
     }
+
     for( int img = 0; img < noi; ++img )
     {
-        auto sd     = this->searchdir[img].data();
-        auto v      = this->velocities[img].data();
-        auto g      = this->grad[img].data();
+        auto v      = view_of( this->velocities[img] );
+        auto sd     = view_of( this->searchdir[img] );
+        auto g      = view_of( this->grad[img] );
         auto m_temp = this->m;
 
         scalar dt    = this->systems[img]->llg_parameters->dt;
         scalar ratio = projection_full / force_norm2_full;
 
         // Calculate the projected velocity
+        
         if( projection_full <= 0 )
         {
-            Vectormath::fill( velocities[img], { 0, 0, 0 } );
+            generate_indexed( exec_context, v, [=]( std::size_t i ) { return Vector3{ 0, 0, 0 }; } );
         }
         else
         {
-            Backend::par::apply( nos, [g, v, ratio] SPIRIT_LAMBDA( int idx ) { v[idx] = g[idx] * ratio; } );
+            generate_indexed( exec_context, v, [=]( std::size_t i ) { return g[i] * ratio; } );
         }
+        generate_indexed( exec_context, sd, [=]( std::size_t i ) { return dt * v[i] + 0.5 / m_temp * dt * g[i]; } );
 
-        Backend::par::apply(
-            nos,
-            [sd, dt, m_temp, v, g] SPIRIT_LAMBDA( int idx ) { sd[idx] = dt * v[idx] + 0.5 / m_temp * dt * g[idx]; } );
+        // TODO: use this insted, but as of now, doesn't work on the GPU
+        // auto task = schedule(exec_context)
+        // |   if_then_else(
+        //         [=]{ return projection_full <= 0; },
+        //         stdexec::bulk(v.size(), [=](std::size_t i){
+        //             v[i] = Vector3 { 0, 0, 0 };
+        //         }),
+        //         stdexec::bulk(v.size(), [=](std::size_t i){
+        //             v[i] = g[i] * ratio;
+        //         })
+        //     )
+        // |   stdexec::bulk(conf.size(), [=](std::size_t i){
+        //         sd[i] = dt * v[i] + 0.5 / m_temp * dt * g[i];;
+        //     });
+        //
+        // stdexec::sync_wait(std::move(task)).value();
+
     }
-    Solver_Kernels::oso_rotate( this->configurations, this->searchdir );
+
+    Solver_Kernels::oso_rotate( exec_context, this->configurations, this->searchdir );
 }
 
 template<>
