@@ -28,88 +28,102 @@ inline void Method_Solver<Solver::VP>::Initialize()
 template<>
 inline void Method_Solver<Solver::VP>::Iteration()
 {
+    using namespace Execution;
+
     scalar projection_full  = 0;
     scalar force_norm2_full = 0;
 
     // Set previous
-    for( int i = 0; i < noi; ++i )
+    for( int img = 0; img < noi; ++img )
     {
-        auto f    = forces[i].data();
-        auto f_pr = forces_previous[i].data();
-        auto v    = velocities[i].data();
-        auto v_pr = velocities_previous[i].data();
+        auto f    = const_view_of(forces[img]);
+        auto v    = const_view_of(velocities[img]);
+        auto f_pr = view_of(forces_previous[img]);
+        auto v_pr = view_of(velocities_previous[img]);
 
-        Backend::par::apply(
-            forces[i].size(),
-            [f, f_pr, v, v_pr] SPIRIT_LAMBDA( int idx )
-            {
-                f_pr[idx] = f[idx];
-                v_pr[idx] = v[idx];
-            } );
+        for_each_index(exec_context, f.size(), [=](std::size_t i){
+            f_pr[i] = f[i];
+            v_pr[i] = v[i];
+        });
     }
 
     // Get the forces on the configurations
     this->Calculate_Force( configurations, forces );
     this->Calculate_Force_Virtual( configurations, forces, forces_virtual );
 
-    for( int i = 0; i < noi; ++i )
+    for( int img = 0; img < noi; ++img )
     {
-        auto & velocity   = velocities[i];
-        auto & force      = forces[i];
-        auto & force_prev = forces_previous[i];
-
-        auto f      = forces[i].data();
-        auto f_pr   = forces_previous[i].data();
-        auto v      = velocities[i].data();
+        auto v      = view_of(velocities[img]);
+        auto f      = const_view_of(forces[img]);
+        auto f_pr   = const_view_of(forces_previous[img]);
         auto m_temp = this->m;
 
+        // TODO coalesce steps in one stdexec task
         // Calculate the new velocity
-        Backend::par::apply(
-            force.size(),
-            [f, f_pr, v, m_temp] SPIRIT_LAMBDA( int idx ) { v[idx] += 0.5 / m_temp * ( f_pr[idx] + f[idx] ); } );
+        for_each_index(exec_context, f.size(), [=](std::size_t i){
+            v[i] += 0.5 / m_temp * ( f_pr[i] + f[i] ); 
+        });
 
         // Get the projection of the velocity on the force
-        projection[i]  = Vectormath::dot( velocity, force );
-        force_norm2[i] = Vectormath::dot( force, force );
+        // TODO integrate into one stdexec workflow
+        projection[img]  = Vectormath::dot( velocities[img], forces[img] );
+        force_norm2[img] = Vectormath::dot( forces[img], forces[img] );
     }
-    for( int i = 0; i < noi; ++i )
+
+    for( int img = 0; img < noi; ++img )
     {
-        projection_full += projection[i];
-        force_norm2_full += force_norm2[i];
+        projection_full += projection[img];
+        force_norm2_full += force_norm2[img];
     }
-    for( int i = 0; i < noi; ++i )
+
+    for( int img = 0; img < noi; ++img )
     {
-        auto & velocity           = velocities[i];
-        auto & force              = forces[i];
-        auto & configuration      = *( configurations[i] );
-        auto & configuration_temp = *( configurations_temp[i] );
+        auto f         = const_view_of(forces[img]);
+        auto v         = view_of(velocities[img]);
+        auto conf      = view_of(*( configurations[img] ));
+        auto conf_temp = view_of(*( configurations_temp[img] ));
 
-        auto f         = forces[i].data();
-        auto v         = velocities[i].data();
-        auto conf      = ( configurations[i] )->data();
-        auto conf_temp = ( configurations_temp[i] )->data();
-
-        scalar dt    = this->systems[i]->llg_parameters->dt;
+        scalar dt    = this->systems[img]->llg_parameters->dt;
         scalar ratio = projection_full / force_norm2_full;
         auto m_temp  = this->m;
 
         // Calculate the projected velocity
+
         if( projection_full <= 0 )
         {
-            Vectormath::fill( velocity, { 0, 0, 0 } );
+            generate_indexed(exec_context, v, [=](std::size_t i){
+                return Vector3 { 0, 0, 0 };
+            });
         }
         else
         {
-            Backend::par::apply( force.size(), [f, v, ratio] SPIRIT_LAMBDA( int idx ) { v[idx] = f[idx] * ratio; } );
+            generate_indexed(exec_context, v, [=](std::size_t i){
+                return f[i] * ratio;
+            });
         }
+        for_each_index(exec_context, conf.size(), [=](std::size_t i){
+            conf_temp[i] = conf[i] + dt * v[i] + 0.5 / m_temp * dt * f[i];
+            conf[i]      = conf_temp[i].normalized();
+        });
 
-        Backend::par::apply(
-            force.size(),
-            [conf, conf_temp, dt, m_temp, v, f] SPIRIT_LAMBDA( int idx )
-            {
-                conf_temp[idx] = conf[idx] + dt * v[idx] + 0.5 / m_temp * dt * f[idx];
-                conf[idx]      = conf_temp[idx].normalized();
-            } );
+        // TODO: use this insted, but as of now, doesn't work on the GPU
+        // auto task = schedule(exec_context)
+        // |   if_then_else(
+        //         [=]{ return projection_full <= 0; },
+        //         stdexec::bulk(v.size(), [=](std::size_t i){
+        //             v[i] = Vector3 { 0, 0, 0 };
+        //         }),
+        //         stdexec::bulk(v.size(), [=](std::size_t i){
+        //             v[i] = f[i] * ratio;
+        //         })
+        //     )
+        // |   stdexec::bulk(conf.size(), [=](std::size_t i){
+        //         conf_temp[i] = conf[i] + dt * v[i] + 0.5 / m_temp * dt * f[i];
+        //         conf[i]      = conf_temp[i].normalized();
+        //     });
+        //
+        // stdexec::sync_wait(std::move(task)).value();
+
     }
 }
 
