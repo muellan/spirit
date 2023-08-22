@@ -27,10 +27,6 @@ inline void Method_Solver<Solver::RungeKutta4>::Initialize()
     for( int i = 0; i < this->noi; i++ )
         this->configurations_k3[i] = std::shared_ptr<vectorfield>( new vectorfield( this->nos ) );
 
-    this->configurations_k4 = std::vector<std::shared_ptr<vectorfield>>( this->noi );
-    for( int i = 0; i < this->noi; i++ )
-        this->configurations_k4[i] = std::shared_ptr<vectorfield>( new vectorfield( this->nos ) );
-
     this->temp1 = vectorfield( this->nos, { 0, 0, 0 } );
 }
 
@@ -40,6 +36,8 @@ inline void Method_Solver<Solver::RungeKutta4>::Initialize()
 template<>
 inline void Method_Solver<Solver::RungeKutta4>::Iteration()
 {
+    using namespace Execution;
+
     // Generate random vectors for this iteration
     this->Prepare_Thermal_Field();
 
@@ -48,21 +46,22 @@ inline void Method_Solver<Solver::RungeKutta4>::Iteration()
     this->Calculate_Force_Virtual( this->configurations, this->forces, this->forces_virtual );
 
     // Predictor for each image
-    for( int i = 0; i < this->noi; ++i )
+    for( int img = 0; img < this->noi; ++img )
     {
-        auto & conf           = *this->configurations[i];
-        auto & k1             = *this->configurations_k1[i];
-        auto & conf_predictor = *this->configurations_predictor[i];
-        auto & force          = this->forces_virtual[i];
+        auto conf           = const_view_of( *this->configurations[img] );
+        auto force          = const_view_of( this->forces_virtual[img] );
+        auto k1             = view_of( *this->configurations_k1[img] );
+        auto conf_predictor = view_of( *this->configurations_predictor[img] );
 
-        // k1
-        Vectormath::set_c_cross( -1, conf, force, k1 );
-
-        // Predictor for k2
-        Vectormath::set_c_a( 1, conf, conf_predictor );
-        Vectormath::add_c_a( 0.5, k1, conf_predictor );
-        // Normalize
-        Vectormath::normalize_vectors( conf_predictor );
+        for_each_index(
+            exec_context, conf.size(),
+            [=]( std::size_t i )
+            {
+                k1[i] = -1 * conf[i].cross( force[i] );
+                // Predictor for k2
+                conf_predictor[i] = conf[i] + 0.5 * k1[i];
+                conf_predictor[i].normalize();
+            } );
     }
 
     // Calculate_Force for the predictor
@@ -71,21 +70,22 @@ inline void Method_Solver<Solver::RungeKutta4>::Iteration()
         this->configurations_predictor, this->forces_predictor, this->forces_virtual_predictor );
 
     // Predictor for each image
-    for( int i = 0; i < this->noi; ++i )
+    for( int img = 0; img < this->noi; ++img )
     {
-        auto & conf           = *this->configurations[i];
-        auto & k2             = *this->configurations_k2[i];
-        auto & conf_predictor = *this->configurations_predictor[i];
-        auto & force          = this->forces_virtual_predictor[i];
+        auto conf           = const_view_of( *this->configurations[img] );
+        auto force          = const_view_of( this->forces_virtual_predictor[img] );
+        auto k2             = view_of( *this->configurations_k2[img] );
+        auto conf_predictor = view_of( *this->configurations_predictor[img] );
 
-        // k2
-        Vectormath::set_c_cross( -1, conf_predictor, force, k2 );
-
-        // Predictor for k3
-        Vectormath::set_c_a( 1, conf, conf_predictor );
-        Vectormath::add_c_a( 0.5, k2, conf_predictor );
-        // Normalize
-        Vectormath::normalize_vectors( conf_predictor );
+        for_each_index(
+            exec_context, conf.size(),
+            [=]( std::size_t i )
+            {
+                k2[i] = -1 * conf_predictor[i].cross( force[i] );
+                // Predictor for k3
+                conf_predictor[i] = conf[i] + 0.5 * k2[i];
+                conf_predictor[i].normalize();
+            } );
     }
 
     // Calculate_Force for the predictor (k3)
@@ -94,21 +94,22 @@ inline void Method_Solver<Solver::RungeKutta4>::Iteration()
         this->configurations_predictor, this->forces_predictor, this->forces_virtual_predictor );
 
     // Predictor for each image
-    for( int i = 0; i < this->noi; ++i )
+    for( int img = 0; img < this->noi; ++img )
     {
-        auto & conf           = *this->configurations[i];
-        auto & k3             = *this->configurations_k3[i];
-        auto & conf_predictor = *this->configurations_predictor[i];
-        auto & force          = this->forces_virtual_predictor[i];
+        auto conf           = const_view_of( *this->configurations[img] );
+        auto force          = const_view_of( this->forces_virtual_predictor[img] );
+        auto k3             = view_of( *this->configurations_k3[img] );
+        auto conf_predictor = view_of( *this->configurations_predictor[img] );
 
-        // k3
-        Vectormath::set_c_cross( -1, conf_predictor, force, k3 );
-
-        // Predictor for k4
-        Vectormath::set_c_a( 1, conf, conf_predictor );
-        Vectormath::add_c_a( 1, k3, conf_predictor );
-        // Normalize
-        Vectormath::normalize_vectors( conf_predictor );
+        for_each_index(
+            exec_context, conf.size(),
+            [=]( std::size_t i )
+            {
+                k3[i] = -1 * conf_predictor[i].cross( force[i] );
+                // Predictor for k4
+                conf_predictor[i] = conf[i] + k3[i];
+                conf_predictor[i].normalize();
+            } );
     }
 
     // Calculate_Force for the predictor (k4)
@@ -117,32 +118,25 @@ inline void Method_Solver<Solver::RungeKutta4>::Iteration()
         this->configurations_predictor, this->forces_predictor, this->forces_virtual_predictor );
 
     // Corrector step for each image
-    for( int i = 0; i < this->noi; i++ )
+    for( int img = 0; img < this->noi; img++ )
     {
-        auto & conf           = *this->configurations[i];
-        auto & k1             = *this->configurations_k1[i];
-        auto & k2             = *this->configurations_k2[i];
-        auto & k3             = *this->configurations_k3[i];
-        auto & k4             = *this->configurations_k4[i];
-        auto & conf_predictor = *this->configurations_predictor[i];
-        auto & conf_temp      = *this->configurations_temp[i];
-        auto & force          = this->forces_virtual_predictor[i];
+        auto force          = const_view_of( this->forces_virtual_predictor[img] );
+        auto k1             = const_view_of( *this->configurations_k1[img] );
+        auto k2             = const_view_of( *this->configurations_k2[img] );
+        auto k3             = const_view_of( *this->configurations_k3[img] );
+        auto conf_predictor = const_view_of( *this->configurations_predictor[img] );
+        auto conf           = view_of( *this->configurations[img] );
 
-        // k4
-        Vectormath::set_c_cross( -1, conf_predictor, force, k4 );
-
-        // 4th order Runge Kutta step
-        Vectormath::set_c_a( 1, conf, conf_temp );
-        Vectormath::add_c_a( 1.0 / 6.0, k1, conf_temp );
-        Vectormath::add_c_a( 1.0 / 3.0, k2, conf_temp );
-        Vectormath::add_c_a( 1.0 / 3.0, k3, conf_temp );
-        Vectormath::add_c_a( 1.0 / 6.0, k4, conf_temp );
-
-        // Normalize spins
-        Vectormath::normalize_vectors( conf_temp );
-
-        // Copy out
-        conf = conf_temp;
+        for_each_index(
+            exec_context, conf.size(),
+            [=]( std::size_t i )
+            {
+                auto k4 = -1 * conf_predictor[i].cross( force[i] );
+                // 4th order Runge Kutta step
+                conf[i] = conf[i] + ( 1.0 / 6.0 ) * k1[i] + ( 1.0 / 3.0 ) * k2[i] + ( 1.0 / 3.0 ) * k3[i]
+                          + ( 1.0 / 6.0 ) * k4;
+                conf[i].normalize();
+            } );
     }
 }
 

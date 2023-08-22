@@ -201,7 +201,6 @@ protected:
     std::vector<std::shared_ptr<vectorfield>> configurations_k1;
     std::vector<std::shared_ptr<vectorfield>> configurations_k2;
     std::vector<std::shared_ptr<vectorfield>> configurations_k3;
-    std::vector<std::shared_ptr<vectorfield>> configurations_k4;
 
     // Random vector array
     vectorfield xi;
