@@ -10,6 +10,27 @@
 
 using namespace Utility;
 
+[[nodiscard]] inline auto atlas_calc_gradients_async(
+    const_vectorfield_view s, // spins
+    const_vectorfield_view f, // forces
+    const_scalarfield_view a3, vector2field_view residuals )
+{
+    return stdexec::bulk(
+        s.size(),
+        [=](std::size_t i)
+        {
+            auto J00 = s[i][1] * s[i][1] + s[i][2] * ( s[i][2] + a3[i] );
+            auto J10 = -s[i][0] * s[i][1];
+            auto J01 = -s[i][0] * s[i][1];
+            auto J11 = s[i][0] * s[i][0] + s[i][2] * ( s[i][2] + a3[i] );
+            auto J02 = -s[i][0] * ( s[i][2] + a3[i] );
+            auto J12 = -s[i][1] * ( s[i][2] + a3[i] );
+
+            residuals[i][0] = -( J00 * f[i][0] + J01 * f[i][1] + J02 * f[i][2] );
+            residuals[i][1] = -( J10 * f[i][0] + J11 * f[i][1] + J12 * f[i][2] );
+        } );
+}
+
 template<>
 inline void Method_Solver<Solver::LBFGS_Atlas>::Initialize()
 {
@@ -46,9 +67,12 @@ inline void Method_Solver<Solver::LBFGS_Atlas>::Initialize()
     TODO: reference painless conjugate gradients
     See also Jorge Nocedal and Stephen J. Wright 'Numerical Optimization' Second Edition, 2006 (p. 121)
 */
+// clang-format off
 template<>
 inline void Method_Solver<Solver::LBFGS_Atlas>::Iteration()
 {
+    using namespace Execution;
+
     int noi = configurations.size();
     int nos = ( *configurations[0] ).size();
 
@@ -57,16 +81,26 @@ inline void Method_Solver<Solver::LBFGS_Atlas>::Iteration()
 
     for( int img = 0; img < this->noi; img++ )
     {
-        auto & image    = *this->configurations[img];
-        auto & grad_ref = this->atlas_residuals[img];
+        auto image    = const_view_of( *this->configurations[img] );
+        auto a3       = const_view_of( this->atlas_coords3[img] );
+        auto f        = const_view_of( this->forces[img] );
+        auto s        = const_view_of( image );
+        auto fv       = view_of( this->forces_virtual[img] );
+        auto grad_ref = view_of( this->atlas_residuals[img] );
 
-        auto fv = this->forces_virtual[img].data();
-        auto f  = this->forces[img].data();
-        auto s  = image.data();
+        auto task = schedule( exec_context )
+        |   stdexec::when_all(
+                stdexec::bulk( this->nos, [=]( std::size_t i )
+                { 
+                    fv[i] = s[i].cross( f[i] ); 
+                } )
+                | stdexec::then([]{})
+                ,
+                atlas_calc_gradients_async( image, f, a3, grad_ref )
+                | stdexec::then([]{})
+            );
 
-        Backend::par::apply( this->nos, [f, fv, s] SPIRIT_LAMBDA( int idx ) { fv[idx] = s[idx].cross( f[idx] ); } );
-
-        Solver_Kernels::atlas_calc_gradients( grad_ref, image, this->forces[img], this->atlas_coords3[img] );
+        stdexec::sync_wait( std::move( task ) ).value();
     }
 
     // Calculate search direction
@@ -103,6 +137,7 @@ inline void Method_Solver<Solver::LBFGS_Atlas>::Iteration()
             this->atlas_directions, this->atlas_residuals_last, this->rho );
     }
 }
+// clang-format on
 
 template<>
 inline std::string Method_Solver<Solver::LBFGS_Atlas>::SolverName()

@@ -3,6 +3,7 @@
 #include <engine/Backend_par.hpp>
 #include <engine/Solver_Kernels.hpp>
 #include <utility/Constants.hpp>
+#include <utility/View.hpp>
 
 using namespace Utility;
 using Utility::Constants::Pi;
@@ -12,81 +13,36 @@ namespace Engine
 namespace Solver_Kernels
 {
 
-void sib_transform( const vectorfield & spins, const vectorfield & force, vectorfield & out )
+void oso_rotate(
+    Execution::Context exec_context, std::vector<std::shared_ptr<vectorfield>> & configurations,
+    std::vector<vectorfield> & searchdir )
 {
-    int n = spins.size();
+    const int noi = configurations.size();
+    const int nos = configurations[0]->size();
 
-    auto s = spins.data();
-    auto f = force.data();
-    auto o = out.data();
-
-    Backend::par::apply(
-        n,
-        [s, f, o] SPIRIT_LAMBDA( int idx )
-        {
-            Vector3 e1, a2, A;
-            scalar detAi;
-            e1 = s[idx];
-            A  = 0.5 * f[idx];
-
-            // 1/determinant(A)
-            detAi = 1.0 / ( 1 + pow( A.norm(), 2.0 ) );
-
-            // calculate equation witho the predictor?
-            a2 = e1 - e1.cross( A );
-
-            o[idx][0]
-                = ( a2[0] * ( A[0] * A[0] + 1 ) + a2[1] * ( A[0] * A[1] - A[2] ) + a2[2] * ( A[0] * A[2] + A[1] ) )
-                  * detAi;
-            o[idx][1]
-                = ( a2[0] * ( A[1] * A[0] + A[2] ) + a2[1] * ( A[1] * A[1] + 1 ) + a2[2] * ( A[1] * A[2] - A[0] ) )
-                  * detAi;
-            o[idx][2]
-                = ( a2[0] * ( A[2] * A[0] - A[1] ) + a2[1] * ( A[2] * A[1] + A[0] ) + a2[2] * ( A[2] * A[2] + 1 ) )
-                  * detAi;
-        } );
-}
-
-void oso_calc_gradients( vectorfield & grad, const vectorfield & spins, const vectorfield & forces )
-{
-    const Matrix3 t = ( Matrix3() << 0, 0, 1, 0, -1, 0, 1, 0, 0 ).finished();
-
-    auto g = grad.data();
-    auto s = spins.data();
-    auto f = forces.data();
-
-    Backend::par::apply(
-        spins.size(), [g, s, f, t] SPIRIT_LAMBDA( int idx ) { g[idx] = t * ( -s[idx].cross( f[idx] ) ); } );
-}
-
-void oso_rotate( std::vector<std::shared_ptr<vectorfield>> & configurations, std::vector<vectorfield> & searchdir )
-{
-    int noi = configurations.size();
-    int nos = configurations[0]->size();
     for( int img = 0; img < noi; ++img )
     {
+        auto sd = const_view_of( searchdir[img] );
+        auto s  = view_of( *configurations[img] );
 
-        auto s  = configurations[img]->data();
-        auto sd = searchdir[img].data();
-
-        Backend::par::apply(
-            nos,
-            [s, sd] SPIRIT_LAMBDA( int idx )
+        Execution::for_each_index(
+            exec_context, nos,
+            [=]( std::size_t i )
             {
-                scalar theta = ( sd[idx] ).norm();
-                scalar q = cos( theta ), w = 1 - q, x = -sd[idx][0] / theta, y = -sd[idx][1] / theta,
-                       z = -sd[idx][2] / theta, s1 = -y * z * w, s2 = x * z * w, s3 = -x * y * w, p1 = x * sin( theta ),
-                       p2 = y * sin( theta ), p3 = z * sin( theta );
+                scalar theta = ( sd[i] ).norm();
+                scalar q = cos( theta ), w = 1 - q, x = -sd[i][0] / theta, y = -sd[i][1] / theta, z = -sd[i][2] / theta,
+                       s1 = -y * z * w, s2 = x * z * w, s3 = -x * y * w, p1 = x * sin( theta ), p2 = y * sin( theta ),
+                       p3 = z * sin( theta );
 
                 scalar t1, t2, t3;
                 if( theta > 1.0e-20 ) // if theta is too small we do nothing
                 {
-                    t1        = ( q + z * z * w ) * s[idx][0] + ( s1 + p1 ) * s[idx][1] + ( s2 + p2 ) * s[idx][2];
-                    t2        = ( s1 - p1 ) * s[idx][0] + ( q + y * y * w ) * s[idx][1] + ( s3 + p3 ) * s[idx][2];
-                    t3        = ( s2 - p2 ) * s[idx][0] + ( s3 - p3 ) * s[idx][1] + ( q + x * x * w ) * s[idx][2];
-                    s[idx][0] = t1;
-                    s[idx][1] = t2;
-                    s[idx][2] = t3;
+                    t1      = ( q + z * z * w ) * s[i][0] + ( s1 + p1 ) * s[i][1] + ( s2 + p2 ) * s[i][2];
+                    t2      = ( s1 - p1 ) * s[i][0] + ( q + y * y * w ) * s[i][1] + ( s3 + p3 ) * s[i][2];
+                    t3      = ( s2 - p2 ) * s[i][0] + ( s3 - p3 ) * s[i][1] + ( q + x * x * w ) * s[i][2];
+                    s[i][0] = t1;
+                    s[i][1] = t2;
+                    s[i][2] = t3;
                 };
             } );
     }
@@ -125,30 +81,6 @@ void atlas_rotate(
                 spins[idx] *= 1 / ( gamma + denom );
             } );
     }
-}
-
-void atlas_calc_gradients(
-    vector2field & residuals, const vectorfield & spins, const vectorfield & forces, const scalarfield & a3_coords )
-{
-    auto s  = spins.data();
-    auto a3 = a3_coords.data();
-    auto g  = residuals.data();
-    auto f  = forces.data();
-
-    Backend::par::apply(
-        spins.size(),
-        [s, a3, g, f] SPIRIT_LAMBDA( int idx )
-        {
-            scalar J00 = s[idx][1] * s[idx][1] + s[idx][2] * ( s[idx][2] + a3[idx] );
-            scalar J10 = -s[idx][0] * s[idx][1];
-            scalar J01 = -s[idx][0] * s[idx][1];
-            scalar J11 = s[idx][0] * s[idx][0] + s[idx][2] * ( s[idx][2] + a3[idx] );
-            scalar J02 = -s[idx][0] * ( s[idx][2] + a3[idx] );
-            scalar J12 = -s[idx][1] * ( s[idx][2] + a3[idx] );
-
-            g[idx][0] = -( J00 * f[idx][0] + J01 * f[idx][1] + J02 * f[idx][2] );
-            g[idx][1] = -( J10 * f[idx][0] + J11 * f[idx][1] + J12 * f[idx][2] );
-        } );
 }
 
 bool ncg_atlas_check_coordinates(
