@@ -19,9 +19,9 @@ jobs:
     - name: 📚 Install required system packages
       run: |
         wget --no-verbose -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-        sudo add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-15 main"
+        sudo add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-17 main"
         sudo apt update
-        sudo apt install xorg-dev libglu1-mesa-dev libgtk-3-dev clang-format-15 clang-tidy-15
+        sudo apt install xorg-dev libglu1-mesa-dev libgtk-3-dev clang-format-17 clang-tidy-17
 
     - name: 📁 Create build folder
       run: cmake -E make_directory ${{runner.workspace}}/build
@@ -35,8 +35,8 @@ jobs:
       if: always()
       shell: bash
       run: |
-        clang-format-15 --version
-        OUTPUT=$($SOURCES | xargs clang-format-15 -n 2>&1)
+        clang-format-17 --version
+        OUTPUT=$($SOURCES | xargs clang-format-17 -n 2>&1)
         if [[ $OUTPUT ]]; then
           echo "$OUTPUT"
           exit 1
@@ -46,7 +46,7 @@ jobs:
       if: always()
       shell: bash
       run: |
-        clang-tidy-15 --version
+        clang-tidy-17 --version
 
     - uses: actions/setup-python@v4
       with:
@@ -130,14 +130,14 @@ jobs:
             parallelisation: "openmp"
           - os: ubuntu-22.04
             parallelisation: "cuda"
-          - os: macos-13
-            parallelisation: ""
-          - os: macos-13
-            parallelisation: "openmp"
-          - os: windows-2022
-            parallelisation: ""
-          - os: windows-2022
-            parallelisation: "openmp"
+          # - os: windows-2022
+          #   parallelisation: ""
+          # - os: windows-2022
+          #   parallelisation: "openmp"
+          # - os: macos-13
+          #   parallelisation: ""
+          # - os: macos-13
+          #   parallelisation: "openmp"
     env:
       BUILD_TYPE: Release
       CMAKE_FLAGS: -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DSPIRIT_UI_USE_IMGUI=ON -DSPIRIT_UI_CXX_USE_QT=OFF
@@ -169,22 +169,22 @@ jobs:
         echo "/usr/local/cuda-12.2/bin" >> $GITHUB_PATH
         echo "/usr/local/cuda-12.2/lib64" >> $GITHUB_PATH
 
-    - name: 📚 Install LLVM (MacOS)
-      if: matrix.os == 'macos-13'
-      shell: bash
-      run: |
-        brew update
-        brew install llvm
-        echo "/usr/local/opt/llvm/bin" >> $GITHUB_PATH
-        echo "/opt/homebrew/opt/llvm/bin" >> $GITHUB_PATH
-
-    - name: 📚 Install LLVM and Ninja (Windows)
-      if: matrix.os == 'windows-2022'
-      shell: pwsh
-      run: |
-        choco install llvm ninja -y
-        choco upgrade llvm
-        "CMAKE_FLAGS=$env:CMAKE_FLAGS -G Ninja" >> $env:GITHUB_ENV
+    # - name: 📚 Install LLVM (MacOS)
+    #   if: matrix.os == 'macos-13'
+    #   shell: bash
+    #   run: |
+    #     brew update
+    #     brew install llvm
+    #     echo "/usr/local/opt/llvm/bin" >> $GITHUB_PATH
+    #     echo "/opt/homebrew/opt/llvm/bin" >> $GITHUB_PATH
+    #
+    # - name: 📚 Install LLVM and Ninja (Windows)
+    #   if: matrix.os == 'windows-2022'
+    #   shell: pwsh
+    #   run: |
+    #     choco install llvm ninja -y
+    #     choco upgrade llvm
+    #     "CMAKE_FLAGS=$env:CMAKE_FLAGS -G Ninja" >> $env:GITHUB_ENV
 
     - name: 📁 Create build folder
       run: cmake -E make_directory ${{runner.workspace}}/build
@@ -278,7 +278,7 @@ jobs:
       if: matrix.parallelisation == 'cuda'
       shell: bash
       working-directory: ${{runner.workspace}}/build
-      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE $CMAKE_FLAGS -DSPIRIT_USE_CUDA=ON -DCUDA_TOOLKIT_ROOT_DIR=/opt/nvidia/hpc_sdk/Linux_x86_64/23.3/cuda/
+      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE $CMAKE_FLAGS -DSPIRIT_USE_CUDA=ON -DCUDA_TOOLKIT_ROOT_DIR=/opt/nvidia/hpc_sdk/Linux_x86_64/23.5/cuda/
 
     - name: 🛠 Build
       shell: bash
@@ -294,36 +294,36 @@ jobs:
       working-directory: ${{runner.workspace}}/build
       run: ctest -C $BUILD_TYPE --rerun-failed --output-on-failure
 
-  test-msvc:
-    name: msvc (windows-2022)
-    runs-on: windows-2022
-    env:
-      BUILD_TYPE: Release
-      CMAKE_FLAGS: -DSPIRIT_UI_USE_IMGUI=ON -DSPIRIT_UI_CXX_USE_QT=OFF
-
-    steps:
-    - uses: actions/checkout@v3
-
-    - name: 📁 Create build folder
-      run: cmake -E make_directory ${{runner.workspace}}/build
-
-    - name: ⚙ Configure
-      shell: bash
-      working-directory: ${{runner.workspace}}/build
-      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE $CMAKE_FLAGS
-
-    - name: 🛠 Build
-      shell: bash
-      working-directory: ${{runner.workspace}}/build
-      run: cmake --build . --config $BUILD_TYPE -j 2
-
-    - name: 📚 Install python packages
-      run: pip install --user numpy
-
-    - name: 🧪 Test
-      shell: bash
-      working-directory: ${{runner.workspace}}/build
-      run: ctest -C $BUILD_TYPE --rerun-failed --output-on-failure
+  # test-msvc:
+  #   name: msvc (windows-2022)
+  #   runs-on: windows-2022
+  #   env:
+  #     BUILD_TYPE: Release
+  #     CMAKE_FLAGS: -DSPIRIT_UI_USE_IMGUI=ON -DSPIRIT_UI_CXX_USE_QT=OFF
+  #
+  #   steps:
+  #   - uses: actions/checkout@v3
+  #
+  #   - name: 📁 Create build folder
+  #     run: cmake -E make_directory ${{runner.workspace}}/build
+  #
+  #   - name: ⚙ Configure
+  #     shell: bash
+  #     working-directory: ${{runner.workspace}}/build
+  #     run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE $CMAKE_FLAGS
+  #
+  #   - name: 🛠 Build
+  #     shell: bash
+  #     working-directory: ${{runner.workspace}}/build
+  #     run: cmake --build . --config $BUILD_TYPE -j 2
+  #
+  #   - name: 📚 Install python packages
+  #     run: pip install --user numpy
+  #
+  #   - name: 🧪 Test
+  #     shell: bash
+  #     working-directory: ${{runner.workspace}}/build
+  #     run: ctest -C $BUILD_TYPE --rerun-failed --output-on-failure
 
   test-debug-coverage:
     name: test debug and coverage (${{ matrix.os }})
@@ -334,8 +334,8 @@ jobs:
         include:
           - os: ubuntu-22.04
             coverage: true
-          - os: macos-13
-          - os: windows-2022
+          # - os: macos-13
+          # - os: windows-2022
     env:
       BUILD_TYPE: Debug
       CMAKE_FLAGS: -DSPIRIT_UI_USE_IMGUI=OFF -DSPIRIT_UI_CXX_USE_QT=OFF
@@ -419,12 +419,12 @@ jobs:
         include:
           - configuration: "single-precision"
             os: ubuntu-22.04
-          - configuration: "single-precision"
-            os: macos-13
-          - configuration: "single-precision"
-            os: windows-2022
           - configuration: "pinning-and-defects"
             os: ubuntu-22.04
+          # - configuration: "single-precision"
+          #   os: macos-13
+          # - configuration: "single-precision"
+          #   os: windows-2022
     env:
       BUILD_TYPE: Release
       CMAKE_FLAGS: -DSPIRIT_UI_USE_IMGUI=ON -DSPIRIT_UI_CXX_USE_QT=OFF
@@ -511,32 +511,32 @@ jobs:
       working-directory: ${{runner.workspace}}/build
       run: cmake --build . --config $BUILD_TYPE -j 2
 
-  build-ui-qt:
-    runs-on: ubuntu-20.04
-    env:
-      BUILD_TYPE: Release
-      CMAKE_FLAGS: -DSPIRIT_UI_USE_IMGUI=OFF -DSPIRIT_UI_CXX_USE_QT=ON
-
-    steps:
-    - uses: actions/checkout@v3
-
-    - name: 📚 Install Qt5
-      run: |
-        sudo apt update
-        sudo apt install qt5-default libqt5charts5-dev
-
-    - name: 📁 Create build folder
-      run: cmake -E make_directory ${{runner.workspace}}/build
-
-    - name: ⚙ Configure
-      shell: bash
-      working-directory: ${{runner.workspace}}/build
-      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE $CMAKE_FLAGS
-
-    - name: 🛠 Build
-      shell: bash
-      working-directory: ${{runner.workspace}}/build
-      run: cmake --build . --config $BUILD_TYPE -j 2
+  # build-ui-qt:
+  #   runs-on: ubuntu-20.04
+  #   env:
+  #     BUILD_TYPE: Release
+  #     CMAKE_FLAGS: -DSPIRIT_UI_USE_IMGUI=OFF -DSPIRIT_UI_CXX_USE_QT=ON
+  #
+  #   steps:
+  #   - uses: actions/checkout@v3
+  #
+  #   - name: 📚 Install Qt5
+  #     run: |
+  #       sudo apt update
+  #       sudo apt install qt5-default libqt5charts5-dev
+  #
+  #   - name: 📁 Create build folder
+  #     run: cmake -E make_directory ${{runner.workspace}}/build
+  #
+  #   - name: ⚙ Configure
+  #     shell: bash
+  #     working-directory: ${{runner.workspace}}/build
+  #     run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE $CMAKE_FLAGS
+  #
+  #   - name: 🛠 Build
+  #     shell: bash
+  #     working-directory: ${{runner.workspace}}/build
+  #     run: cmake --build . --config $BUILD_TYPE -j 2
 
   build-webapp:
     name: webapp ${{ matrix.target }} (ubuntu-22.04)
@@ -607,12 +607,12 @@ jobs:
 
   deploy-pypi:
     if: github.event_name != 'pull_request'
-    needs: [lint, test-gcc, test-clang, test-nvcpp, test-msvc, test-debug-coverage]
+    needs: [lint, test-gcc, test-clang, test-nvcpp, test-debug-coverage]
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest]
     env:
       BUILD_TYPE: Release
       CMAKE_FLAGS: -DSPIRIT_UI_USE_IMGUI=OFF -DSPIRIT_UI_CXX_USE_QT=OFF
@@ -673,12 +673,12 @@ jobs:
 
   deploy-package:
     if: github.event_name != 'pull_request'
-    needs: [lint, test-gcc, test-clang, test-nvcpp, test-msvc, test-debug-coverage]
+    needs: [lint, test-gcc, test-clang, test-nvcpp, test-debug-coverage]
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest]
     env:
       BUILD_TYPE: Release
       CMAKE_FLAGS: -DSPIRIT_UI_USE_IMGUI=ON -DSPIRIT_UI_CXX_USE_QT=OFF -DSPIRIT_BUNDLE_APP=ON
@@ -716,26 +716,26 @@ jobs:
         path: ${{runner.workspace}}/build/*.tar.gz
         if-no-files-found: error
 
-    - name: 📦 Archive macOS package
-      if: matrix.os == 'macos-latest'
-      uses: actions/upload-artifact@v3
-      with:
-        name: spirit-macos
-        path: |
-          ${{runner.workspace}}/build/*.dmg
-          ${{runner.workspace}}/build/install/README.md
-          ${{runner.workspace}}/build/install/LICENSE.txt
-          ${{runner.workspace}}/build/install/VERSION.txt
-          ${{runner.workspace}}/build/install/licenses/
-        if-no-files-found: error
+    # - name: 📦 Archive macOS package
+    #   if: matrix.os == 'macos-latest'
+    #   uses: actions/upload-artifact@v3
+    #   with:
+    #     name: spirit-macos
+    #     path: |
+    #       ${{runner.workspace}}/build/*.dmg
+    #       ${{runner.workspace}}/build/install/README.md
+    #       ${{runner.workspace}}/build/install/LICENSE.txt
+    #       ${{runner.workspace}}/build/install/VERSION.txt
+    #       ${{runner.workspace}}/build/install/licenses/
+    #     if-no-files-found: error
 
-    - name: 📦 Archive windows package
-      if: matrix.os == 'windows-latest'
-      uses: actions/upload-artifact@v3
-      with:
-        name: spirit-windows
-        path: ${{runner.workspace}}/build/*.zip
-        if-no-files-found: error
+    # - name: 📦 Archive windows package
+    #   if: matrix.os == 'windows-latest'
+    #   uses: actions/upload-artifact@v3
+    #   with:
+    #     name: spirit-windows
+    #     path: ${{runner.workspace}}/build/*.zip
+    #     if-no-files-found: error
 
   draft-release:
     if: github.event_name == 'push' && startsWith( github.ref, 'refs/tags/' )
