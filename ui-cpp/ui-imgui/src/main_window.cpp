@@ -142,7 +142,7 @@ void MainWindow::handle_mouse()
 #ifdef __APPLE__
     bool ctrl = io.KeySuper;
 #else
-    bool ctrl    = io.KeyCtrl;
+    bool ctrl = io.KeyCtrl;
 #endif
 
 #if defined( __APPLE__ )
@@ -299,7 +299,7 @@ void MainWindow::handle_keyboard()
 #ifdef __APPLE__
     bool ctrl = io.KeySuper;
 #else
-    bool ctrl    = io.KeyCtrl;
+    bool ctrl = io.KeyCtrl;
 #endif
 
     if( ctrl && io.KeyShift )
