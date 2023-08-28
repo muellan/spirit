@@ -50,7 +50,7 @@ inline void Method_Solver<Solver::LBFGS_OSO>::Iteration()
         auto f  = view_of( this->forces[img] );
 
         auto task = schedule(exec_context)
-        |   stdexec::bulk(grad.size(), [=](std::size_t i){
+        |   stdexec::bulk(s.size(), [=](std::size_t i){
                 fv[i] = s[i].cross( f[i] );
             })
         |   Solver_Kernels::oso_calc_gradients_async(this->grad[img], s, f);

@@ -65,11 +65,13 @@ inline void Method_Solver<Solver::VP_OSO>::Iteration()
         auto forces = const_view_of( this->forces[img] );
         auto grad   = view_of( this->grad[img] );
 
+        // clang-format off
         auto task = schedule(exec_context)
         |   Solver_Kernels::oso_calc_gradients_async( grad, image, forces )
         |   stdexec::bulk(grad.size(), [=](std::size_t i){
                 grad[i] *= -1.0;
             });
+        // clang-format on
 
         stdexec::sync_wait(std::move(task)).value();
     }

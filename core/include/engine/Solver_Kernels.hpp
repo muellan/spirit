@@ -29,19 +29,11 @@ oso_calc_gradients_async( vectorfield_view grad, const_vectorfield_view spins, c
 
 void oso_rotate( Execution::Context, std::vector<std::shared_ptr<vectorfield>> & configurations, std::vector<vectorfield> & searchdir );
 
-void oso_rotate( std::vector<std::shared_ptr<vectorfield>> & configurations, std::vector<vectorfield> & searchdir );
-void oso_calc_gradients( vectorfield & residuals, const vectorfield & spins, const vectorfield & forces );
 scalar maximum_rotation( const vectorfield & searchdir, scalar maxmove );
 
 // Atlas coordinates
-void atlas_rotate(
-    std::vector<std::shared_ptr<vectorfield>> & configurations, const std::vector<scalarfield> & a3_coords,
-    const std::vector<vector2field> & searchdir );
-
-bool ncg_atlas_check_coordinates(
-    const std::vector<std::shared_ptr<vectorfield>> & spins, std::vector<scalarfield> & a3_coords, scalar tol = -0.6 );
-
 void lbfgs_atlas_transform_direction(
+    Execution::Context,
     std::vector<std::shared_ptr<vectorfield>> & configurations, std::vector<scalarfield> & a3_coords,
     std::vector<field<vector2field>> & atlas_updates, std::vector<field<vector2field>> & grad_updates,
     std::vector<vector2field> & searchdir, std::vector<vector2field> & grad_pr, scalarfield & rho );

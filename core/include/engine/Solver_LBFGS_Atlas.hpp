@@ -31,6 +31,62 @@ using namespace Utility;
         } );
 }
 
+inline void atlas_rotate(
+    std::vector<std::shared_ptr<vectorfield>> & configurations, const std::vector<scalarfield> & a3_coords,
+    const std::vector<vector2field> & searchdir )
+{
+    int noi = configurations.size();
+    int nos = configurations[0]->size();
+    for( int img = 0; img < noi; img++ )
+    {
+        auto spins = configurations[img]->data();
+        auto d     = searchdir[img].data();
+        auto a3    = a3_coords[img].data();
+        Backend::par::apply(
+            nos,
+            [nos, spins, d, a3] SPIRIT_LAMBDA( int idx )
+            {
+                const scalar gamma = ( 1 + spins[idx][2] * a3[idx] );
+                const scalar denom = ( spins[idx].head<2>().squaredNorm() ) / gamma
+                                     + 2 * d[idx].dot( spins[idx].head<2>() ) + gamma * d[idx].squaredNorm();
+                spins[idx].head<2>() = 2 * ( spins[idx].head<2>() + d[idx] * gamma );
+                spins[idx][2]        = a3[idx] * ( gamma - denom );
+                spins[idx] *= 1 / ( gamma + denom );
+            } );
+    }
+}
+
+[[nodiscard]] inline bool ncg_atlas_check_coordinates(
+    const std::vector<std::shared_ptr<vectorfield>> & spins, std::vector<scalarfield> & a3_coords, scalar tol )
+{
+    int noi = spins.size();
+    int nos = ( *spins[0] ).size();
+
+    // We use `int` instead of `bool`, because somehow cuda does not like pointers to bool
+    // TODO: fix in future
+    field<int> result = field<int>( 1, int( false ) );
+
+    for( int img = 0; img < noi; img++ )
+    {
+        auto s    = spins[0]->data();
+        auto a3   = a3_coords[img].data();
+        int * res = &result[0];
+
+        Backend::par::apply(
+            nos,
+            [s, a3, tol, res] SPIRIT_LAMBDA( int idx )
+            {
+                if( s[idx][2] * a3[idx] < tol && res[0] == int( false ) )
+                    res[0] = int( true );
+            } );
+    }
+
+    return bool( result[0] );
+}
+
+// Atlas coordinates
+
+
 template<>
 inline void Method_Solver<Solver::LBFGS_Atlas>::Initialize()
 {
@@ -88,17 +144,23 @@ inline void Method_Solver<Solver::LBFGS_Atlas>::Iteration()
         auto fv       = view_of( this->forces_virtual[img] );
         auto grad_ref = view_of( this->atlas_residuals[img] );
 
+        // auto task = schedule( exec_context )
+        // |   stdexec::when_all(
+        //         stdexec::bulk( this->nos, [=]( std::size_t i )
+        //         { 
+        //             fv[i] = s[i].cross( f[i] ); 
+        //         } )
+        //         | stdexec::then([]{})
+        //         ,
+        //         atlas_calc_gradients_async( image, f, a3, grad_ref )
+        //         | stdexec::then([]{})
+        //     );
+
         auto task = schedule( exec_context )
-        |   stdexec::when_all(
-                stdexec::bulk( this->nos, [=]( std::size_t i )
-                { 
-                    fv[i] = s[i].cross( f[i] ); 
-                } )
-                | stdexec::then([]{})
-                ,
-                atlas_calc_gradients_async( image, f, a3, grad_ref )
-                | stdexec::then([]{})
-            );
+        |   stdexec::bulk( this->nos, [=]( std::size_t i ) { 
+                fv[i] = s[i].cross( f[i] ); 
+            } )
+        |   atlas_calc_gradients_async( image, f, a3, grad_ref );
 
         stdexec::sync_wait( std::move( task ) ).value();
     }
@@ -128,11 +190,12 @@ inline void Method_Solver<Solver::LBFGS_Atlas>::Iteration()
     }
 
     // Rotate spins
-    Solver_Kernels::atlas_rotate( this->configurations, this->atlas_coords3, this->atlas_directions );
+    atlas_rotate( this->configurations, this->atlas_coords3, this->atlas_directions );
 
-    if( Solver_Kernels::ncg_atlas_check_coordinates( this->configurations, this->atlas_coords3, -0.6 ) )
+    if( ncg_atlas_check_coordinates( this->configurations, this->atlas_coords3, -0.6 ) )
     {
         Solver_Kernels::lbfgs_atlas_transform_direction(
+            exec_context,
             this->configurations, this->atlas_coords3, this->atlas_updates, this->grad_atlas_updates,
             this->atlas_directions, this->atlas_residuals_last, this->rho );
     }
