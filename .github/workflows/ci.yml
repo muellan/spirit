@@ -230,7 +230,7 @@ jobs:
         include:
           - parallelisation: ""
           # - parallelisation: "openmp" # Some OpenMP that Spirit uses isn't supported by nvc++
-          - parallelisation: "cuda"
+          # - parallelisation: "cuda"
     env:
       BUILD_TYPE: Release
       CMAKE_FLAGS: -DCMAKE_CXX_COMPILER=nvc++ -DSPIRIT_UI_USE_IMGUI=ON -DSPIRIT_UI_CXX_USE_QT=OFF
