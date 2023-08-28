@@ -120,21 +120,21 @@ inline void Method_Solver<Solver::RungeKutta4>::Iteration()
     // Corrector step for each image
     for( int img = 0; img < this->noi; img++ )
     {
+        auto conf_predictor = const_view_of( *this->configurations_predictor[img] );
         auto force          = const_view_of( this->forces_virtual_predictor[img] );
         auto k1             = const_view_of( *this->configurations_k1[img] );
         auto k2             = const_view_of( *this->configurations_k2[img] );
         auto k3             = const_view_of( *this->configurations_k3[img] );
-        auto conf_predictor = const_view_of( *this->configurations_predictor[img] );
         auto conf           = view_of( *this->configurations[img] );
 
         for_each_index(
             exec_context, conf.size(),
             [=]( std::size_t i )
             {
-                auto k4 = -1 * conf_predictor[i].cross( force[i] );
                 // 4th order Runge Kutta step
                 conf[i] = conf[i] + ( 1.0 / 6.0 ) * k1[i] + ( 1.0 / 3.0 ) * k2[i] + ( 1.0 / 3.0 ) * k3[i]
-                          + ( 1.0 / 6.0 ) * k4;
+                          - ( 1.0 / 6.0 ) * conf_predictor[i].cross( force[i] );
+
                 conf[i].normalize();
             } );
     }
