@@ -38,21 +38,22 @@ inline void Method_Solver<Solver::LBFGS_OSO>::Initialize()
 template<>
 inline void Method_Solver<Solver::LBFGS_OSO>::Iteration()
 {
+    using namespace Execution;
+
     // update forces which are -dE/ds
     this->Calculate_Force( this->configurations, this->forces );
     // calculate gradients for OSO
     for( int img = 0; img < this->noi; img++ )
     {
-        auto & image    = *this->configurations[img];
-        auto & grad_ref = this->grad[img];
+        auto s  = const_view_of( *this->configurations[img] );
+        auto fv = view_of( this->forces_virtual[img] );
+        auto f  = view_of( this->forces[img] );
 
-        auto fv = this->forces_virtual[img].data();
-        auto f  = this->forces[img].data();
-        auto s  = image.data();
+        auto task = schedule( exec_context )
+                    | stdexec::bulk( s.size(), [=]( std::size_t i ) { fv[i] = s[i].cross( f[i] ); } )
+                    | Solver_Kernels::oso_calc_gradients_async( this->grad[img], s, f );
 
-        Backend::par::apply( this->nos, [f, fv, s] SPIRIT_LAMBDA( int idx ) { fv[idx] = s[idx].cross( f[idx] ); } );
-
-        Solver_Kernels::oso_calc_gradients( grad_ref, image, this->forces[img] );
+        stdexec::sync_wait( std::move( task ) ).value();
     }
 
     // calculate search direction
@@ -60,10 +61,13 @@ inline void Method_Solver<Solver::LBFGS_OSO>::Iteration()
         this->local_iter, this->rho, this->alpha, this->q_vec, this->searchdir, this->delta_a, this->delta_grad,
         this->grad, this->grad_pr, this->n_lbfgs_memory, maxmove );
 
+    // TODO integrate into one stdexec workflow?
     // Scale direction
     scalar scaling = 1;
     for( int img = 0; img < noi; img++ )
+    {
         scaling = std::min( Solver_Kernels::maximum_rotation( searchdir[img], maxmove ), scaling );
+    }
 
     for( int img = 0; img < noi; img++ )
     {
@@ -71,7 +75,7 @@ inline void Method_Solver<Solver::LBFGS_OSO>::Iteration()
     }
 
     // rotate spins
-    Solver_Kernels::oso_rotate( this->configurations, this->searchdir );
+    Solver_Kernels::oso_rotate( exec_context, this->configurations, this->searchdir );
 }
 
 template<>
