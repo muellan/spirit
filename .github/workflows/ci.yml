@@ -130,12 +130,12 @@ jobs:
             parallelisation: "openmp"
           - os: ubuntu-22.04
             parallelisation: "cuda"
-          # - os: windows-2022
-          #   parallelisation: ""
+          - os: macos-13
+            parallelisation: ""
+          - os: windows-2022
+            parallelisation: ""
           # - os: windows-2022
           #   parallelisation: "openmp"
-          # - os: macos-13
-          #   parallelisation: ""
           # - os: macos-13
           #   parallelisation: "openmp"
     env:
@@ -169,22 +169,22 @@ jobs:
         echo "/usr/local/cuda-12.2/bin" >> $GITHUB_PATH
         echo "/usr/local/cuda-12.2/lib64" >> $GITHUB_PATH
 
-    # - name: 📚 Install LLVM (MacOS)
-    #   if: matrix.os == 'macos-13'
-    #   shell: bash
-    #   run: |
-    #     brew update
-    #     brew install llvm
-    #     echo "/usr/local/opt/llvm/bin" >> $GITHUB_PATH
-    #     echo "/opt/homebrew/opt/llvm/bin" >> $GITHUB_PATH
-    #
-    # - name: 📚 Install LLVM and Ninja (Windows)
-    #   if: matrix.os == 'windows-2022'
-    #   shell: pwsh
-    #   run: |
-    #     choco install llvm ninja -y
-    #     choco upgrade llvm
-    #     "CMAKE_FLAGS=$env:CMAKE_FLAGS -G Ninja" >> $env:GITHUB_ENV
+    - name: 📚 Install LLVM (MacOS)
+      if: matrix.os == 'macos-13'
+      shell: bash
+      run: |
+        brew update
+        brew install llvm
+        echo "/usr/local/opt/llvm/bin" >> $GITHUB_PATH
+        echo "/opt/homebrew/opt/llvm/bin" >> $GITHUB_PATH
+
+    - name: 📚 Install LLVM and Ninja (Windows)
+      if: matrix.os == 'windows-2022'
+      shell: pwsh
+      run: |
+        choco install llvm ninja -y
+        choco upgrade llvm
+        "CMAKE_FLAGS=$env:CMAKE_FLAGS -G Ninja" >> $env:GITHUB_ENV
 
     - name: 📁 Create build folder
       run: cmake -E make_directory ${{runner.workspace}}/build
@@ -229,8 +229,8 @@ jobs:
       matrix:
         include:
           - parallelisation: ""
+          - parallelisation: "cuda"
           # - parallelisation: "openmp" # Some OpenMP that Spirit uses isn't supported by nvc++
-          # - parallelisation: "cuda"
     env:
       BUILD_TYPE: Release
       CMAKE_FLAGS: -DCMAKE_CXX_COMPILER=nvc++ -DSPIRIT_UI_USE_IMGUI=ON -DSPIRIT_UI_CXX_USE_QT=OFF
