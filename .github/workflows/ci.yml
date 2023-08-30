@@ -132,12 +132,12 @@ jobs:
             parallelisation: "cuda"
           - os: macos-13
             parallelisation: ""
+          - os: macos-13
+            parallelisation: "openmp"
           - os: windows-2022
             parallelisation: ""
-          # - os: windows-2022
-          #   parallelisation: "openmp"
-          # - os: macos-13
-          #   parallelisation: "openmp"
+          - os: windows-2022
+            parallelisation: "openmp"
     env:
       BUILD_TYPE: Release
       CMAKE_FLAGS: -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DSPIRIT_UI_USE_IMGUI=ON -DSPIRIT_UI_CXX_USE_QT=OFF
@@ -173,6 +173,7 @@ jobs:
       if: matrix.os == 'macos-13'
       shell: bash
       run: |
+        sudo chown -R $(whoami) /usr/local
         brew update
         brew install llvm
         echo "/usr/local/opt/llvm/bin" >> $GITHUB_PATH
@@ -605,71 +606,71 @@ jobs:
         path: ui-cpp/ui-imgui/webapp/
         if-no-files-found: error
 
-  deploy-pypi:
-    if: github.event_name != 'pull_request'
-    needs: [lint, test-gcc, test-clang, test-nvcpp, test-debug-coverage]
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest]
-    env:
-      BUILD_TYPE: Release
-      CMAKE_FLAGS: -DSPIRIT_UI_USE_IMGUI=OFF -DSPIRIT_UI_CXX_USE_QT=OFF
-      SPIRIT_ADD_VERSION_SUFFIX: true
-
-    steps:
-    - uses: actions/checkout@v3
-    - uses: actions/setup-python@v4
-      with:
-        python-version: '3.x'
-
-    - name: ⚙ Configure environment
-      shell: bash
-      if: github.ref == 'refs/heads/master'
-      run: echo "SPIRIT_ADD_VERSION_SUFFIX=false" >> $GITHUB_ENV
-
-    - name: 📁 Create build folder
-      run: cmake -E make_directory ${{runner.workspace}}/build
-
-    - name: ⚙ Configure
-      shell: bash
-      working-directory: ${{runner.workspace}}/build
-      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE $CMAKE_FLAGS
-
-    - name: 🛠 Build
-      shell: bash
-      working-directory: ${{runner.workspace}}/build
-      run: cmake --build . --config $BUILD_TYPE -j 2
-
-    - name: 📚 Install necessary packages
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install numpy setuptools wheel twine
-
-    - name: 🛠 Build Python package
-      shell: bash
-      working-directory: ./core/python
-      run: |
-        echo "Python package build"
-        echo "Add suffix to spirit version tag for python package $SPIRIT_ADD_VERSION_SUFFIX"
-        python setup.py sdist bdist_wheel
-
-    - name: 🚀 Deploy to TestPyPI
-      working-directory: ./core/python
-      env:
-        TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-      if: github.ref != 'refs/heads/master'
-      run: twine upload --skip-existing --repository testpypi dist/*
-
-    - name: 🚀 Deploy to PyPI
-      working-directory: ./core/python
-      env:
-        TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-      if: github.ref == 'refs/heads/master'
-      run: twine upload --skip-existing dist/*
+  # deploy-pypi:
+  #   if: github.event_name != 'pull_request'
+  #   needs: [lint, test-gcc, test-clang, test-nvcpp, test-debug-coverage]
+  #   runs-on: ${{ matrix.os }}
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       os: [ubuntu-latest]
+  #   env:
+  #     BUILD_TYPE: Release
+  #     CMAKE_FLAGS: -DSPIRIT_UI_USE_IMGUI=OFF -DSPIRIT_UI_CXX_USE_QT=OFF
+  #     SPIRIT_ADD_VERSION_SUFFIX: true
+  #
+  #   steps:
+  #   - uses: actions/checkout@v3
+  #   - uses: actions/setup-python@v4
+  #     with:
+  #       python-version: '3.x'
+  #
+  #   - name: ⚙ Configure environment
+  #     shell: bash
+  #     if: github.ref == 'refs/heads/master'
+  #     run: echo "SPIRIT_ADD_VERSION_SUFFIX=false" >> $GITHUB_ENV
+  #
+  #   - name: 📁 Create build folder
+  #     run: cmake -E make_directory ${{runner.workspace}}/build
+  #
+  #   - name: ⚙ Configure
+  #     shell: bash
+  #     working-directory: ${{runner.workspace}}/build
+  #     run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE $CMAKE_FLAGS
+  #
+  #   - name: 🛠 Build
+  #     shell: bash
+  #     working-directory: ${{runner.workspace}}/build
+  #     run: cmake --build . --config $BUILD_TYPE -j 2
+  #
+  #   - name: 📚 Install necessary packages
+  #     run: |
+  #       python -m pip install --upgrade pip
+  #       python -m pip install numpy setuptools wheel twine
+  #
+  #   - name: 🛠 Build Python package
+  #     shell: bash
+  #     working-directory: ./core/python
+  #     run: |
+  #       echo "Python package build"
+  #       echo "Add suffix to spirit version tag for python package $SPIRIT_ADD_VERSION_SUFFIX"
+  #       python setup.py sdist bdist_wheel
+  #
+  #   - name: 🚀 Deploy to TestPyPI
+  #     working-directory: ./core/python
+  #     env:
+  #       TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+  #       TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+  #     if: github.ref != 'refs/heads/master'
+  #     run: twine upload --skip-existing --repository testpypi dist/*
+  #
+  #   - name: 🚀 Deploy to PyPI
+  #     working-directory: ./core/python
+  #     env:
+  #       TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+  #       TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+  #     if: github.ref == 'refs/heads/master'
+  #     run: twine upload --skip-existing dist/*
 
   deploy-package:
     if: github.event_name != 'pull_request'
@@ -739,7 +740,7 @@ jobs:
 
   draft-release:
     if: github.event_name == 'push' && startsWith( github.ref, 'refs/tags/' )
-    needs: [deploy-pypi, deploy-package, build-webapp]
+    needs: [deploy-package, build-webapp]
     runs-on: ubuntu-latest
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
